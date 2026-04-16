@@ -1,126 +1,174 @@
 """
 Insurance Fraud Detection System — Flask Backend
 =================================================
-Folder layout expected:
-  flask_app/
-    app.py                        ← this file
-    models/
-      model_xgboost.pkl
-      model_lightgbm.pkl
-      model_random_forest.pkl
-      final_feature_columns.json
-      model_metadata.json
-      ensemble_config.json
-      X_val.parquet
-    templates/
-      index.html
-    uploads/                      (auto-created)
-
-Poppler (needed only for PDF upload):
-  Extract to  C:\\poppler
-  The folder  C:\\poppler\\Library\\bin  must contain pdftoppm.exe
-  If your extraction gave a different path, update POPPLER_PATH below.
+NO EasyOCR / NO PyTorch / NO pdf2image.
 
 Run:   python app.py
 Open:  http://localhost:5000
+
+If you see NumPy errors run:
+    pip uninstall numpy -y
+    pip install "numpy<2"
+    pip install lightgbm shap --upgrade
 """
 
 import os
-import sys
 import json
-import re
 import warnings
 import traceback
 
 import numpy as np
 import pandas as pd
 import joblib
-import shap
 
 from flask import Flask, render_template, request, jsonify
 from datetime import datetime
-from pathlib import Path
-from werkzeug.utils import secure_filename
 
 warnings.filterwarnings("ignore")
 
-# ── Poppler path (Windows) ────────────────────────────────────────────────────
-POPPLER_PATH = r"C:\poppler\Library\bin"
-# Change this if pdftoppm.exe is somewhere else, e.g.:
-#   r"C:\poppler\bin"
-#   r"C:\Program Files\poppler\Library\bin"
-
-# ── Flask ─────────────────────────────────────────────────────────────────────
+# ── Flask setup ───────────────────────────────────────────────────────────────
 app = Flask(__name__)
-app.config["MAX_CONTENT_LENGTH"] = 16 * 1024 * 1024   # 16 MB
+app.config["MAX_CONTENT_LENGTH"] = 16 * 1024 * 1024
+
 UPLOAD_FOLDER = os.path.join(os.path.dirname(os.path.abspath(__file__)), "uploads")
-app.config["UPLOAD_FOLDER"] = UPLOAD_FOLDER
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
-# ── Paths ─────────────────────────────────────────────────────────────────────
 BASE      = os.path.dirname(os.path.abspath(__file__))
 MODEL_DIR = os.path.join(BASE, "models")
 
-# ── Load models ───────────────────────────────────────────────────────────────
+# ═════════════════════════════════════════════════════════════════
+#  LOAD MODELS — graceful fallback if any model fails
+# ═════════════════════════════════════════════════════════════════
 print("=" * 55)
-print("  Loading models…")
+print("  Loading Insurance Fraud Detection Models...")
+print("=" * 55)
 
-xgb_model  = joblib.load(os.path.join(MODEL_DIR, "model_xgboost.pkl"));       print("  ✅ XGBoost")
-lgbm_model = joblib.load(os.path.join(MODEL_DIR, "model_lightgbm.pkl"));      print("  ✅ LightGBM")
-rf_model   = joblib.load(os.path.join(MODEL_DIR, "model_random_forest.pkl")); print("  ✅ Random Forest")
+# XGBoost
+try:
+    xgb_model = joblib.load(os.path.join(MODEL_DIR, "model_xgboost.pkl"))
+    print("  ✅ XGBoost loaded")
+    XGB_OK = True
+except Exception as e:
+    print(f"  ❌ XGBoost failed: {e}")
+    xgb_model = None
+    XGB_OK = False
 
+# LightGBM
+try:
+    lgbm_model = joblib.load(os.path.join(MODEL_DIR, "model_lightgbm.pkl"))
+    print("  ✅ LightGBM loaded")
+    LGBM_OK = True
+except Exception as e:
+    print(f"  ⚠️  LightGBM failed: {e}")
+    lgbm_model = None
+    LGBM_OK = False
+
+# Random Forest
+try:
+    rf_model = joblib.load(os.path.join(MODEL_DIR, "model_random_forest.pkl"))
+    print("  ✅ Random Forest loaded")
+    RF_OK = True
+except Exception as e:
+    print(f"  ❌ Random Forest failed: {e}")
+    rf_model = None
+    RF_OK = False
+
+if not any([XGB_OK, LGBM_OK, RF_OK]):
+    raise RuntimeError("No models loaded — check your models/ folder")
+
+# Feature columns
 with open(os.path.join(MODEL_DIR, "final_feature_columns.json")) as fh:
     FEATURE_COLS = json.load(fh)
 print(f"  ✅ Features: {len(FEATURE_COLS)}")
 
+# Metadata
 with open(os.path.join(MODEL_DIR, "model_metadata.json")) as fh:
     METADATA = json.load(fh)
-print(f"  ✅ Metadata  AUC={METADATA['val_auc_roc']}  F1={METADATA['val_f1']}")
+print(f"  ✅ AUC={METADATA['val_auc_roc']}  F1={METADATA['val_f1']}")
 
+# Ensemble config
 with open(os.path.join(MODEL_DIR, "ensemble_config.json")) as fh:
     ENS_CFG = json.load(fh)
 
+# Population stats from X_val
 X_val_raw = pd.read_parquet(os.path.join(MODEL_DIR, "X_val.parquet"))
 X_val_raw = X_val_raw[[c for c in FEATURE_COLS if c in X_val_raw.columns]]
 POP_MEANS = X_val_raw.mean().to_dict()
 POP_STDS  = X_val_raw.std().to_dict()
 print("  ✅ Population stats loaded")
 
-explainer = shap.TreeExplainer(xgb_model)
-print("  ✅ SHAP explainer ready")
+# SHAP — load only if XGBoost is available, with safe fallback
+SHAP_OK   = False
+explainer = None
+try:
+    import shap
+    if XGB_OK:
+        explainer = shap.TreeExplainer(xgb_model)
+        SHAP_OK   = True
+        print("  ✅ SHAP explainer ready")
+    else:
+        print("  ⚠️  SHAP skipped (XGBoost not loaded)")
+except Exception as e:
+    print(f"  ⚠️  SHAP failed: {e}")
+    print("      Fraud reasons will use rule-based fallback instead.")
+    print("      Fix: pip uninstall numpy -y && pip install 'numpy<2' && pip install shap --upgrade")
 
 THRESHOLD = METADATA["best_threshold"]
-WEIGHTS   = ENS_CFG["weights"]          # [3, 3, 1]
-ocr_reader = None                        # lazy-loaded on first /scan call
+WEIGHTS   = ENS_CFG.get("weights", [3, 3, 1])
 
-print(f"\n  🚀 Ready  threshold={THRESHOLD}  AUC={METADATA['val_auc_roc']}")
+# Adjust weights for available models
+available_weights = []
+available_models  = []
+labels = []
+if XGB_OK:
+    available_models.append(xgb_model)
+    available_weights.append(WEIGHTS[0] if len(WEIGHTS) > 0 else 3)
+    labels.append("XGBoost")
+if LGBM_OK:
+    available_models.append(lgbm_model)
+    available_weights.append(WEIGHTS[1] if len(WEIGHTS) > 1 else 3)
+    labels.append("LightGBM")
+if RF_OK:
+    available_models.append(rf_model)
+    available_weights.append(WEIGHTS[2] if len(WEIGHTS) > 2 else 1)
+    labels.append("Random Forest")
+
+print(f"\n  🚀 Ready | Models: {', '.join(labels)}")
+print(f"     Threshold={THRESHOLD} | AUC={METADATA['val_auc_roc']}")
 print("=" * 55)
 
 
-# ═════════════════════════════════════════════════════════════════════════════
+# ═════════════════════════════════════════════════════════════════
+#  HELPERS
+# ═════════════════════════════════════════════════════════════════
+
+def _set(row, key, val):
+    if key in row:
+        row[key] = val
+
+def _iv(d, key):
+    try:
+        return float(d.get(key, POP_MEANS.get(key, 0)) or 0)
+    except (TypeError, ValueError):
+        return float(POP_MEANS.get(key, 0))
+
+
+# ═════════════════════════════════════════════════════════════════
 #  FEATURE ENGINEERING
-# ═════════════════════════════════════════════════════════════════════════════
+# ═════════════════════════════════════════════════════════════════
 
 def build_feature_df(input_dict):
-    """Convert 6 user inputs → full 57-feature vector expected by the model."""
     row = {col: float(POP_MEANS.get(col, 0.0)) for col in FEATURE_COLS}
     eps = 1e-9
 
-    def iv(key, default=None):
-        v = input_dict.get(key, default if default is not None else POP_MEANS.get(key, 0))
-        try:
-            return float(v)
-        except (TypeError, ValueError):
-            return float(POP_MEANS.get(key, 0))
+    reimb   = max(_iv(input_dict, "ip_avg_reimbursement"),     0)
+    stays   = max(_iv(input_dict, "ip_avg_stay_days"),         0)
+    claims  = max(_iv(input_dict, "ip_claim_count"),           1)
+    pats    = max(_iv(input_dict, "total_unique_patients"),    1)
+    chronic = max(_iv(input_dict, "ip_avg_chronic_cond"),      0)
+    phys    = max(_iv(input_dict, "ip_unique_attending_phys"), 1)
 
-    reimb   = iv("ip_avg_reimbursement");     reimb   = max(reimb,   0)
-    stays   = iv("ip_avg_stay_days");         stays   = max(stays,   0)
-    claims  = max(iv("ip_claim_count"), 1)
-    pats    = max(iv("total_unique_patients"), 1)
-    chronic = iv("ip_avg_chronic_cond");      chronic = max(chronic,  0)
-    phys    = max(iv("ip_unique_attending_phys"), 1)
-
-    # ── Direct ──────────────────────────────────────────────────────────────
+    # Direct
     _set(row, "ip_avg_reimbursement",     reimb)
     _set(row, "ip_avg_stay_days",         stays)
     _set(row, "ip_claim_count",           claims)
@@ -128,11 +176,11 @@ def build_feature_df(input_dict):
     _set(row, "ip_avg_chronic_cond",      chronic)
     _set(row, "ip_unique_attending_phys", phys)
 
-    # ── Derived base ─────────────────────────────────────────────────────────
+    # Derived base
     _set(row, "ip_total_reimbursement",    reimb * claims)
     _set(row, "ip_total_stay_days",        stays * claims)
     _set(row, "ip_max_stay_days",          stays * 1.5)
-    _set(row, "ip_avg_patient_age",        iv("ip_avg_patient_age", 68))
+    _set(row, "ip_avg_patient_age",        _iv(input_dict, "ip_avg_patient_age") or 68)
     _set(row, "op_claim_count",            claims * 0.6)
     _set(row, "op_unique_patients",        pats   * 0.7)
     _set(row, "op_avg_reimbursement",      reimb  * 0.3)
@@ -140,7 +188,7 @@ def build_feature_df(input_dict):
     _set(row, "ip_max_chronic_cond",       min(11, chronic + 1))
     _set(row, "ip_total_deductible",       reimb * 0.08)
     _set(row, "ip_avg_deductible",         reimb * 0.08)
-    _set(row, "op_avg_patient_age",        iv("ip_avg_patient_age", 68))
+    _set(row, "op_avg_patient_age",        68)
     _set(row, "ip_avg_annual_ip_reimb",    reimb * 12)
     _set(row, "ip_avg_annual_op_reimb",    reimb * 0.3 * 12)
     _set(row, "op_avg_chronic_cond",       chronic)
@@ -150,9 +198,8 @@ def build_feature_df(input_dict):
     _set(row, "op_total_reimbursement",    reimb * 0.3 * claims)
     _set(row, "op_max_reimbursement",      reimb * 0.5)
     _set(row, "ip_deceased_patient_count", max(0, pats * 0.02))
-    _set(row, "op_avg_patient_age",        68)
 
-    # ── Ratio features ───────────────────────────────────────────────────────
+    # Ratio features
     _set(row, "feat_reimb_per_ip_claim",       reimb)
     _set(row, "feat_reimb_per_unique_patient", (reimb * claims) / pats)
     _set(row, "feat_reimb_per_physician",      (reimb * claims) / phys)
@@ -174,7 +221,7 @@ def build_feature_df(input_dict):
     ])
     _set(row, "feat_total_flags_triggered", flags)
 
-    # ── Risk scores (0–1) ────────────────────────────────────────────────────
+    # Risk scores
     def pct(val, key, mult=3):
         return min(val / max(POP_MEANS.get(key, 1) * mult, eps), 1.0)
 
@@ -192,7 +239,7 @@ def build_feature_df(input_dict):
     _set(row, "risk_physician_pattern",  pp)
     _set(row, "risk_composite_score",    composite)
 
-    # ── Interaction features ─────────────────────────────────────────────────
+    # Interactions
     _set(row, "interact_volume_x_reimb",              np.log1p(claims) * np.log1p(reimb))
     _set(row, "interact_patients_x_chronic",          np.log1p(pats)   * chronic)
     _set(row, "interact_stay_x_reimb",                stays * np.log1p(reimb))
@@ -202,7 +249,7 @@ def build_feature_df(input_dict):
     _set(row, "interact_composite_squared",           composite ** 2)
     _set(row, "interact_low_deductible_x_high_reimb", min(12 * np.log1p(reimb * claims), 1e6))
 
-    # ── Z-score features ─────────────────────────────────────────────────────
+    # Z-scores
     for col in FEATURE_COLS:
         if col.startswith("zscore_"):
             base = col[len("zscore_"):]
@@ -211,7 +258,7 @@ def build_feature_df(input_dict):
                 std  = max(POP_STDS.get(base, 1), eps)
                 row[col] = (row[base] - mean) / std
 
-    # ── Bin features ─────────────────────────────────────────────────────────
+    # Bin features
     for col in FEATURE_COLS:
         if col.startswith("bin_"):
             base = col[len("bin_"):]
@@ -219,7 +266,7 @@ def build_feature_df(input_dict):
                 avg = POP_MEANS.get(base, 0)
                 row[col] = min(int((row[base] / max(avg * 0.5, eps)) * 1.5), 4)
 
-    # ── Anomaly flag features ────────────────────────────────────────────────
+    # Flag features
     for col in FEATURE_COLS:
         if col.startswith("flag_") and col != "feat_total_flags_triggered":
             if "very_low" in col:
@@ -234,32 +281,30 @@ def build_feature_df(input_dict):
     return df.fillna(0).replace([np.inf, -np.inf], 0)
 
 
-def _set(row, key, val):
-    """Set row[key] only if key exists in FEATURE_COLS."""
-    if key in row:
-        row[key] = val
-
-
-# ═════════════════════════════════════════════════════════════════════════════
-#  PREDICTION & EXPLANATION
-# ═════════════════════════════════════════════════════════════════════════════
+# ═════════════════════════════════════════════════════════════════
+#  PREDICTION
+# ═════════════════════════════════════════════════════════════════
 
 def ensemble_predict(feat_df):
-    p_xgb  = float(xgb_model.predict_proba(feat_df)[:, 1][0])
-    p_lgbm = float(lgbm_model.predict_proba(feat_df)[:, 1][0])
-    p_rf   = float(rf_model.predict_proba(feat_df)[:, 1][0])
-    w      = WEIGHTS
-    p_ens  = (w[0]*p_xgb + w[1]*p_lgbm + w[2]*p_rf) / sum(w)
-    return round(p_ens, 4), round(p_xgb, 4), round(p_lgbm, 4), round(p_rf, 4)
+    scores = []
+    xgb_s = lgbm_s = rf_s = 0.0
+
+    for model, w, label in zip(available_models, available_weights, labels):
+        p = float(model.predict_proba(feat_df)[:, 1][0])
+        scores.append(p * w)
+        if label == "XGBoost":    xgb_s  = round(p, 4)
+        if label == "LightGBM":   lgbm_s = round(p, 4)
+        if label == "Random Forest": rf_s = round(p, 4)
+
+    p_ens = sum(scores) / sum(available_weights)
+    return round(p_ens, 4), xgb_s, lgbm_s, rf_s
 
 
 def get_shap_reasons(feat_df, input_vals):
-    sv     = explainer(feat_df)
-    shap_s = pd.Series(sv.values[0], index=FEATURE_COLS)
-    top5   = shap_s[shap_s > 0].sort_values(ascending=False).head(5)
+    """Returns SHAP reasons if available, rule-based fallback otherwise."""
 
     def iv(k):
-        try: return float(input_vals.get(k, POP_MEANS.get(k, 0)))
+        try: return float(input_vals.get(k, POP_MEANS.get(k, 0)) or 0)
         except: return 0.0
 
     def rx(k, v):
@@ -273,13 +318,13 @@ def get_shap_reasons(feat_df, input_vals):
     phys    = iv("ip_unique_attending_phys")
 
     TMPLS = {
-        "ip_avg_reimbursement"          : f"Avg reimbursement ${reimb:,.0f} is {rx('ip_avg_reimbursement',reimb):.1f}x the population average",
-        "ip_total_reimbursement"        : f"Total billing ${reimb*claims:,.0f} is {rx('ip_avg_reimbursement',reimb):.1f}x higher than a typical provider",
-        "ip_avg_stay_days"              : f"Hospital stay of {stays:.1f} days is {rx('ip_avg_stay_days',stays):.1f}x the average ({POP_MEANS.get('ip_avg_stay_days',0):.1f} days)",
-        "ip_claim_count"                : f"Filed {claims:.0f} inpatient claims — {rx('ip_claim_count',claims):.1f}x more than the average provider",
-        "total_unique_patients"         : f"Served {pats:.0f} unique patients — {rx('total_unique_patients',pats):.1f}x a typical provider",
+        "ip_avg_reimbursement"          : f"Avg reimbursement ${reimb:,.0f} is {rx('ip_avg_reimbursement', reimb):.1f}x the population average",
+        "ip_total_reimbursement"        : f"Total billing ${reimb*claims:,.0f} is {rx('ip_avg_reimbursement', reimb):.1f}x higher than a typical provider",
+        "ip_avg_stay_days"              : f"Hospital stay of {stays:.1f} days is {rx('ip_avg_stay_days', stays):.1f}x the average ({POP_MEANS.get('ip_avg_stay_days',0):.1f} days)",
+        "ip_claim_count"                : f"Filed {claims:.0f} inpatient claims — {rx('ip_claim_count', claims):.1f}x more than the average provider",
+        "total_unique_patients"         : f"Served {pats:.0f} unique patients — {rx('total_unique_patients', pats):.1f}x a typical provider",
         "ip_avg_chronic_cond"           : f"Avg {chronic:.2f} chronic conditions per patient — possible diagnosis stuffing",
-        "ip_unique_attending_phys"      : f"Used {phys:.0f} unique physicians — {rx('ip_unique_attending_phys',phys):.1f}x more than average",
+        "ip_unique_attending_phys"      : f"Used {phys:.0f} unique physicians — {rx('ip_unique_attending_phys', phys):.1f}x more than average",
         "risk_composite_score"          : "Overall composite fraud risk score is in the high-risk tier",
         "risk_financial"                : "Financial anomaly score is unusually high across billing metrics",
         "risk_volume"                   : "Claim volume risk score is in the top tier",
@@ -295,69 +340,60 @@ def get_shap_reasons(feat_df, input_vals):
         "interact_composite_squared"    : "Composite risk score is extremely elevated — multiple fraud signals amplifying each other",
     }
 
-    reasons = []
-    for feat, sv_val in top5.items():
-        reasons.append({
-            "feature": feat,
-            "shap"   : round(float(sv_val), 4),
-            "text"   : TMPLS.get(feat, feat.replace("_", " ").title()),
-        })
-    return reasons
+    # ── SHAP path (best) ──────────────────────────────────────────────────────
+    if SHAP_OK and explainer is not None:
+        try:
+            import shap as shap_lib
+            sv     = explainer(feat_df)
+            shap_s = pd.Series(sv.values[0], index=FEATURE_COLS)
+            top5   = shap_s[shap_s > 0].sort_values(ascending=False).head(5)
+            reasons = []
+            for feat, sv_val in top5.items():
+                reasons.append({
+                    "feature": feat,
+                    "shap"   : round(float(sv_val), 4),
+                    "text"   : TMPLS.get(feat, feat.replace("_", " ").title()),
+                })
+            if reasons:
+                return reasons
+        except Exception:
+            pass  # fall through to rule-based
+
+    # ── Rule-based fallback (when SHAP unavailable) ───────────────────────────
+    candidates = []
+
+    reimb_avg = POP_MEANS.get("ip_avg_reimbursement", 1)
+    stay_avg  = POP_MEANS.get("ip_avg_stay_days",      1)
+    claim_avg = POP_MEANS.get("ip_claim_count",         1)
+    pat_avg   = POP_MEANS.get("total_unique_patients",  1)
+    phys_avg  = POP_MEANS.get("ip_unique_attending_phys", 1)
+
+    if reimb  > reimb_avg * 1.5: candidates.append({"feature": "ip_avg_reimbursement",     "shap": round((reimb/reimb_avg-1)*0.1,4), "text": TMPLS["ip_avg_reimbursement"]})
+    if stays  > stay_avg  * 1.5: candidates.append({"feature": "ip_avg_stay_days",         "shap": round((stays/stay_avg-1)*0.08,4), "text": TMPLS["ip_avg_stay_days"]})
+    if claims > claim_avg * 1.5: candidates.append({"feature": "ip_claim_count",           "shap": round((claims/claim_avg-1)*0.07,4),"text": TMPLS["ip_claim_count"]})
+    if pats   > pat_avg   * 1.5: candidates.append({"feature": "total_unique_patients",    "shap": round((pats/pat_avg-1)*0.06,4),   "text": TMPLS["total_unique_patients"]})
+    if chronic > 4:              candidates.append({"feature": "ip_avg_chronic_cond",      "shap": round(chronic*0.05,4),            "text": TMPLS["ip_avg_chronic_cond"]})
+    if phys   > phys_avg  * 1.5: candidates.append({"feature": "ip_unique_attending_phys", "shap": round((phys/phys_avg-1)*0.05,4), "text": TMPLS["ip_unique_attending_phys"]})
+
+    # Always add composite risk if high
+    candidates.append({"feature": "risk_composite_score", "shap": 0.05, "text": TMPLS["risk_composite_score"]})
+    candidates.append({"feature": "interact_volume_x_reimb", "shap": 0.04, "text": TMPLS["interact_volume_x_reimb"]})
+
+    # Sort by shap descending and return top 5
+    candidates.sort(key=lambda x: x["shap"], reverse=True)
+    return candidates[:5]
 
 
 def get_risk_tier(score):
-    if   score >= 0.85:              return "CRITICAL", "#E84C4C", "Immediate investigation required — block claim"
-    elif score >= THRESHOLD:         return "HIGH",     "#FF8C42", "Flag for detailed manual review before approval"
-    elif score >= THRESHOLD * 0.7:   return "MEDIUM",   "#F5C842", "Process with additional verification steps"
-    else:                            return "LOW",       "#22C97A", "Approve — claim is within normal parameters"
+    if   score >= 0.85:             return "CRITICAL", "#E84C4C", "Immediate investigation required — block claim"
+    elif score >= THRESHOLD:        return "HIGH",     "#FF8C42", "Flag for detailed manual review before approval"
+    elif score >= THRESHOLD * 0.7:  return "MEDIUM",   "#F5C842", "Process with additional verification steps"
+    else:                           return "LOW",       "#22C97A", "Approve — claim is within normal parameters"
 
 
-# ═════════════════════════════════════════════════════════════════════════════
-#  OCR FIELD PARSER
-# ═════════════════════════════════════════════════════════════════════════════
-
-OCR_FIELD_PATTERNS = {
-    "ip_avg_reimbursement" : [
-        r"(?:claim\s*amount|total\s*claim|amount\s*claimed|reimburs)[^\d]*\$?\s*([\d,]+)",
-        r"\$\s*([\d,]{4,})",
-    ],
-    "ip_avg_stay_days"     : [
-        r"([\d]+)\s*days?\s*(?:stay|admit|hospital|duration)",
-        r"(?:stay|duration|length)[^\d]*([\d]+)",
-    ],
-    "ip_avg_chronic_cond"  : [
-        r"([\d]+)\s*(?:diagnos|condition|chronic)",
-    ],
-    "ip_avg_patient_age"   : [
-        r"(?:age|aged?)[^\d]*([\d]{2,3})",
-    ],
-    "ip_claim_count"       : [
-        r"(?:claim\s*count|number\s*of\s*claims?|claims?\s*filed)[^\d]*([\d]+)",
-    ],
-    "total_unique_patients": [
-        r"(?:patient|beneficiary)\s*count[^\d]*([\d]+)",
-        r"([\d]+)\s*(?:unique\s*)?patients?",
-    ],
-}
-
-
-def parse_ocr_text(raw_text):
-    fields = {}
-    for field, patterns in OCR_FIELD_PATTERNS.items():
-        for pat in patterns:
-            m = re.search(pat, raw_text, re.IGNORECASE)
-            if m:
-                try:
-                    fields[field] = float(re.sub(r"[,\s]", "", m.group(1)))
-                    break
-                except ValueError:
-                    pass
-    return fields
-
-
-# ═════════════════════════════════════════════════════════════════════════════
+# ═════════════════════════════════════════════════════════════════
 #  ROUTES
-# ═════════════════════════════════════════════════════════════════════════════
+# ═════════════════════════════════════════════════════════════════
 
 @app.route("/")
 def index():
@@ -400,96 +436,24 @@ def predict():
 
 @app.route("/scan", methods=["POST"])
 def scan_document():
-    """
-    OCR scan endpoint.
-    Always returns JSON — never an HTML error page.
-    """
-    global ocr_reader
-
-    # ── Guard: no file ───────────────────────────────────────────
-    if "file" not in request.files:
-        return jsonify({"success": False, "error": "No file uploaded. Please attach a file."}), 400
-
-    f   = request.files["file"]
-    ext = Path(f.filename).suffix.lower() if f.filename else ""
-
-    if ext not in {".pdf", ".jpg", ".jpeg", ".png", ".bmp"}:
-        return jsonify({
-            "success": False,
-            "error"  : f'Unsupported format "{ext}". Upload a PDF, JPG, or PNG.'
-        }), 400
-
-    # ── Save temp file ───────────────────────────────────────────
-    safe_name = secure_filename(f.filename) or "upload" + ext
-    tmp_path  = os.path.join(UPLOAD_FOLDER, safe_name)
+    """Document scanner — manual field entry, no OCR, no PyTorch."""
     try:
-        f.save(tmp_path)
-    except Exception as exc:
-        return jsonify({"success": False, "error": f"Could not save file: {exc}"}), 500
-
-    try:
-        # ── Load EasyOCR on first call ───────────────────────────
-        if ocr_reader is None:
-            try:
-                import easyocr
-                print("Loading EasyOCR (first call — downloading model if needed)…")
-                ocr_reader = easyocr.Reader(["en"], gpu=False)
-                print("✅ EasyOCR ready.")
-            except ImportError:
-                _cleanup(tmp_path)
-                return jsonify({
-                    "success": False,
-                    "error"  : "EasyOCR is not installed. Run:  pip install easyocr"
-                }), 500
-
-        # ── Convert to PIL image ─────────────────────────────────
-        from PIL import Image
-
-        if ext == ".pdf":
-            try:
-                from pdf2image import convert_from_path
-                poppler_ok = os.path.isdir(POPPLER_PATH)
-                pages = (
-                    convert_from_path(tmp_path, dpi=200, poppler_path=POPPLER_PATH)
-                    if poppler_ok
-                    else convert_from_path(tmp_path, dpi=200)
-                )
-                pil_img = pages[0]
-            except Exception as pdf_exc:
-                _cleanup(tmp_path)
-                return jsonify({
-                    "success": False,
-                    "error"  : (
-                        f"PDF conversion failed: {pdf_exc}. "
-                        "Make sure Poppler is installed and POPPLER_PATH in app.py is correct. "
-                        "Or upload a JPG/PNG screenshot of the claim instead — that always works."
-                    )
-                }), 500
+        if request.is_json:
+            data = request.get_json(force=True, silent=True) or {}
         else:
-            try:
-                pil_img = Image.open(tmp_path).convert("RGB")
-            except Exception as img_exc:
-                _cleanup(tmp_path)
-                return jsonify({"success": False, "error": f"Cannot open image: {img_exc}"}), 500
+            data = {
+                "ip_avg_reimbursement"    : request.form.get("ip_avg_reimbursement",      0),
+                "ip_avg_stay_days"        : request.form.get("ip_avg_stay_days",           0),
+                "ip_claim_count"          : request.form.get("ip_claim_count",             0),
+                "ip_avg_chronic_cond"     : request.form.get("ip_avg_chronic_cond",        0),
+                "total_unique_patients"   : request.form.get("total_unique_patients",      0),
+                "ip_unique_attending_phys": request.form.get("ip_unique_attending_phys",   0),
+            }
 
-        # ── Run OCR ──────────────────────────────────────────────
-        try:
-            ocr_results = ocr_reader.readtext(np.array(pil_img))
-            raw_text    = " ".join([r[1] for r in ocr_results])
-        except Exception as ocr_exc:
-            _cleanup(tmp_path)
-            return jsonify({"success": False, "error": f"OCR failed: {ocr_exc}"}), 500
-
-        # ── Parse fields ─────────────────────────────────────────
-        fields  = parse_ocr_text(raw_text)
-
-        # ── Predict ──────────────────────────────────────────────
-        feat_df = build_feature_df(fields)
+        feat_df = build_feature_df(data)
         score, xgb_s, lgbm_s, rf_s = ensemble_predict(feat_df)
         tier, color, action = get_risk_tier(score)
-        reasons = get_shap_reasons(feat_df, fields)
-
-        _cleanup(tmp_path)
+        reasons = get_shap_reasons(feat_df, data)
 
         return jsonify({
             "success"         : True,
@@ -501,47 +465,33 @@ def scan_document():
             "xgb_score"       : xgb_s,
             "lgbm_score"      : lgbm_s,
             "rf_score"        : rf_s,
-            "extracted_fields": {k: str(round(v, 2)) for k, v in fields.items()},
-            "ocr_regions"     : len(ocr_results),
+            "extracted_fields": {k: str(v) for k, v in data.items() if v},
+            "ocr_regions"     : 0,
             "reasons"         : reasons,
             "predicted_at"    : datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
         })
 
     except Exception as exc:
-        # ── Catch-all — ALWAYS return JSON, never HTML ───────────
-        _cleanup(tmp_path)
         app.logger.error(traceback.format_exc())
-        return jsonify({
-            "success": False,
-            "error"  : f"Unexpected error: {exc}",
-            "detail" : traceback.format_exc(),
-        }), 500
+        return jsonify({"success": False, "error": str(exc)}), 500
 
 
 @app.route("/health")
 def health():
     return jsonify({
-        "status"       : "running",
-        "model_auc"    : METADATA["val_auc_roc"],
-        "model_f1"     : METADATA["val_f1"],
-        "threshold"    : THRESHOLD,
-        "features"     : len(FEATURE_COLS),
-        "poppler_found": os.path.isdir(POPPLER_PATH),
-        "poppler_path" : POPPLER_PATH,
-        "timestamp"    : datetime.now().isoformat(),
+        "status"      : "running",
+        "model_auc"   : METADATA["val_auc_roc"],
+        "model_f1"    : METADATA["val_f1"],
+        "threshold"   : THRESHOLD,
+        "features"    : len(FEATURE_COLS),
+        "models_ready": labels,
+        "shap_ready"  : SHAP_OK,
+        "ocr"         : "disabled",
+        "timestamp"   : datetime.now().isoformat(),
     })
 
 
-# ── Utility ───────────────────────────────────────────────────────────────────
-def _cleanup(path):
-    try:
-        if path and os.path.exists(path):
-            os.remove(path)
-    except OSError:
-        pass
-
-
-# ── Error handlers — always return JSON, never HTML ──────────────────────────
+# ── Error handlers ────────────────────────────────────────────────────────────
 @app.errorhandler(404)
 def not_found(e):
     return jsonify({"success": False, "error": "Endpoint not found"}), 404
@@ -559,8 +509,8 @@ def server_error(e):
     return jsonify({"success": False, "error": str(e)}), 500
 
 
-# ═════════════════════════════════════════════════════════════════════════════
+# ── Entry point ───────────────────────────────────────────────────────────────
 if __name__ == "__main__":
-    print("\n  Browser:       http://localhost:5000")
-    print("  Health check:  http://localhost:5000/health\n")
+    print("\n  Browser:      http://localhost:5000")
+    print("  Health check: http://localhost:5000/health\n")
     app.run(debug=True, host="0.0.0.0", port=5000)
