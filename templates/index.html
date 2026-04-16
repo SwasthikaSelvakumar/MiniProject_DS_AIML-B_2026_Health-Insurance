@@ -3,351 +3,845 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Insurance Fraud Detection System</title>
+<title>FraudShield AI — Insurance Fraud Detection</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,500;0,9..40,700;1,9..40,300&display=swap" rel="stylesheet">
 <style>
-* { margin: 0; padding: 0; box-sizing: border-box; }
+/* ── Reset & Root ─────────────────────────────────────────────── */
+*, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
+
 :root {
-  --navy:   #0D1B3E;
-  --card:   #132447;
-  --blue:   #1A3A6B;
-  --accent: #1DB8C4;
-  --green:  #22C97A;
-  --red:    #E84C4C;
-  --yellow: #F5C842;
-  --orange: #FF8C42;
-  --gray:   #8BA3BF;
-  --white:  #FFFFFF;
+  --bg:        #060D1A;
+  --surface:   #0A1628;
+  --surface2:  #0F1E35;
+  --border:    rgba(99,161,255,0.12);
+  --border2:   rgba(99,161,255,0.22);
+  --cyan:      #00E5FF;
+  --cyan-dim:  rgba(0,229,255,0.08);
+  --cyan-glow: rgba(0,229,255,0.25);
+  --green:     #00F5A0;
+  --red:       #FF4D6A;
+  --amber:     #FFB830;
+  --orange:    #FF6B35;
+  --muted:     #4A6A8A;
+  --text:      #E8F0FF;
+  --text-dim:  #7A9BBF;
+  --mono:      'Space Mono', monospace;
+  --sans:      'DM Sans', sans-serif;
 }
-body { background: var(--navy); color: var(--white); font-family: 'Segoe UI', system-ui, sans-serif; min-height: 100vh; }
 
-/* ── NAV ── */
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--sans);
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* ── Animated background grid ─────────────────────────────────── */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(0,229,255,0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0,229,255,0.03) 1px, transparent 1px);
+  background-size: 48px 48px;
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* ── Glow orbs ─────────────────────────────────────────────────── */
+.orb {
+  position: fixed;
+  border-radius: 50%;
+  filter: blur(80px);
+  pointer-events: none;
+  z-index: 0;
+  animation: drift 18s ease-in-out infinite alternate;
+}
+.orb-1 { width:500px; height:500px; background:rgba(0,229,255,0.06); top:-100px; right:-100px; animation-delay: 0s; }
+.orb-2 { width:400px; height:400px; background:rgba(0,245,160,0.04); bottom:-80px; left:-80px; animation-delay: -6s; }
+.orb-3 { width:300px; height:300px; background:rgba(255,75,106,0.04); top:50%; left:40%; animation-delay: -12s; }
+
+@keyframes drift {
+  from { transform: translate(0, 0) scale(1); }
+  to   { transform: translate(30px, 20px) scale(1.1); }
+}
+
+/* ── Everything above background ─────────────────────────────── */
+.above { position: relative; z-index: 1; }
+
+/* ── NAV ──────────────────────────────────────────────────────── */
 nav {
-  background: var(--card); border-bottom: 2px solid var(--accent);
-  padding: 0 2rem; display: flex; align-items: center;
-  justify-content: space-between; height: 60px;
-  position: sticky; top: 0; z-index: 100;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  height: 58px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 2.5rem;
+  background: rgba(6,13,26,0.85);
+  backdrop-filter: blur(16px);
+  border-bottom: 1px solid var(--border);
 }
-.nav-brand { display: flex; align-items: center; gap: 10px; }
-.nav-icon { width: 36px; height: 36px; background: var(--accent); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 20px; }
-.nav-brand h1 { font-size: 16px; font-weight: 700; }
-.nav-brand p  { font-size: 11px; color: var(--gray); }
-.nav-badge { background: var(--blue); border: 1px solid var(--accent); border-radius: 20px; padding: 5px 14px; font-size: 12px; color: var(--accent); font-weight: 600; }
 
-/* ── LAYOUT ── */
-.container { max-width: 1200px; margin: 0 auto; padding: 2rem; }
+.nav-left { display: flex; align-items: center; gap: 14px; }
 
-.hero { text-align: center; padding: 2rem 0 1.5rem; }
-.hero h2 { font-size: 2rem; font-weight: 800; margin-bottom: 0.5rem; }
-.hero h2 span { color: var(--accent); }
-.hero p { color: var(--gray); font-size: 0.95rem; margin-bottom: 1.2rem; }
-.hero-badges { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; }
-.badge { background: var(--blue); border: 1px solid var(--accent); border-radius: 20px; padding: 4px 12px; font-size: 11px; color: var(--accent); font-weight: 500; }
+.logo-mark {
+  width: 34px; height: 34px;
+  background: var(--cyan);
+  border-radius: 6px;
+  display: flex; align-items: center; justify-content: center;
+  position: relative;
+  overflow: hidden;
+}
+.logo-mark::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, rgba(255,255,255,0.3), transparent);
+}
+.logo-mark span { font-family: var(--mono); font-size: 15px; font-weight: 700; color: #060D1A; z-index: 1; }
 
-/* ── STATS ── */
-.stats-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; margin-bottom: 2rem; }
-.stat-card { background: var(--card); border: 1px solid var(--blue); border-radius: 12px; padding: 1.2rem; text-align: center; border-top: 3px solid var(--accent); }
-.stat-card .val { font-size: 2rem; font-weight: 800; color: var(--accent); }
-.stat-card .lbl { font-size: 12px; color: var(--gray); margin-top: 4px; }
+.nav-title { font-family: var(--mono); font-size: 14px; font-weight: 700; letter-spacing: 0.05em; }
+.nav-title em { color: var(--cyan); font-style: normal; }
+.nav-sub { font-size: 10px; color: var(--muted); letter-spacing: 0.08em; text-transform: uppercase; }
 
-/* ── TABS ── */
-.tabs { display: flex; gap: 4px; background: var(--card); border-radius: 10px; padding: 4px; margin-bottom: 1.5rem; border: 1px solid var(--blue); }
-.tab { flex: 1; padding: 10px 6px; border-radius: 8px; border: none; background: transparent; color: var(--gray); font-size: 13px; font-weight: 500; cursor: pointer; transition: all 0.2s; }
-.tab.active { background: var(--accent); color: var(--navy); font-weight: 700; }
-.tab-panel { display: none; }
+.nav-pill {
+  font-family: var(--mono);
+  font-size: 11px;
+  padding: 5px 14px;
+  border: 1px solid var(--border2);
+  border-radius: 20px;
+  color: var(--cyan);
+  background: var(--cyan-dim);
+  white-space: nowrap;
+}
+
+.live-dot {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  color: var(--green);
+  font-family: var(--mono);
+}
+.live-dot::before {
+  content: '';
+  width: 7px; height: 7px;
+  border-radius: 50%;
+  background: var(--green);
+  animation: pulse-dot 2s ease-in-out infinite;
+}
+@keyframes pulse-dot {
+  0%, 100% { opacity: 1; box-shadow: 0 0 0 0 rgba(0,245,160,0.4); }
+  50%       { opacity: 0.7; box-shadow: 0 0 0 6px rgba(0,245,160,0); }
+}
+
+/* ── CONTAINER ────────────────────────────────────────────────── */
+.container { max-width: 1200px; margin: 0 auto; padding: 2rem 2rem 4rem; }
+
+/* ── HERO ─────────────────────────────────────────────────────── */
+.hero {
+  text-align: center;
+  padding: 3rem 0 2.5rem;
+  animation: fadeUp 0.6s ease both;
+}
+@keyframes fadeUp {
+  from { opacity:0; transform: translateY(20px); }
+  to   { opacity:1; transform: translateY(0); }
+}
+
+.hero-eyebrow {
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--cyan);
+  margin-bottom: 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+}
+.hero-eyebrow::before, .hero-eyebrow::after {
+  content: '';
+  width: 40px;
+  height: 1px;
+  background: var(--cyan);
+  opacity: 0.4;
+}
+
+.hero h1 {
+  font-family: var(--sans);
+  font-size: clamp(2rem, 5vw, 3.2rem);
+  font-weight: 700;
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+  margin-bottom: 1rem;
+}
+.hero h1 .accent { color: var(--cyan); }
+.hero h1 .dim    { color: var(--text-dim); font-weight: 300; }
+
+.hero-desc {
+  color: var(--text-dim);
+  font-size: 15px;
+  max-width: 580px;
+  margin: 0 auto 2rem;
+  line-height: 1.7;
+}
+
+.hero-tags {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+  flex-wrap: wrap;
+  margin-bottom: 0;
+}
+.tag {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  padding: 5px 12px;
+  border: 1px solid var(--border2);
+  border-radius: 4px;
+  color: var(--text-dim);
+  background: var(--surface);
+  text-transform: uppercase;
+}
+.tag.hot { border-color: rgba(0,229,255,0.3); color: var(--cyan); background: var(--cyan-dim); }
+
+/* ── METRIC CARDS ─────────────────────────────────────────────── */
+.metrics {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 1px;
+  background: var(--border);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  overflow: hidden;
+  margin: 2.5rem 0;
+  animation: fadeUp 0.6s 0.1s ease both;
+}
+.metric {
+  background: var(--surface);
+  padding: 1.4rem 1.5rem;
+  text-align: center;
+  transition: background 0.2s;
+}
+.metric:hover { background: var(--surface2); }
+.metric .m-val {
+  font-family: var(--mono);
+  font-size: 2rem;
+  font-weight: 700;
+  color: var(--cyan);
+  line-height: 1;
+  margin-bottom: 6px;
+}
+.metric .m-lbl { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em; }
+.metric .m-sub { font-size: 10px; color: var(--muted); margin-top: 3px; opacity: 0.7; }
+
+/* ── TABS ─────────────────────────────────────────────────────── */
+.tab-bar {
+  display: flex;
+  gap: 2px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 2rem;
+  animation: fadeUp 0.6s 0.15s ease both;
+}
+.tab-btn {
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 12px 20px;
+  border: none;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+.tab-btn:hover  { color: var(--text-dim); }
+.tab-btn.active { color: var(--cyan); border-bottom-color: var(--cyan); }
+.tab-panel { display: none; animation: fadeUp 0.3s ease both; }
 .tab-panel.active { display: block; }
 
-/* ── PANELS ── */
-.two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; align-items: start; }
-.panel { background: var(--card); border: 1px solid var(--blue); border-radius: 12px; padding: 1.5rem; }
-.panel h3 { font-size: 15px; color: var(--accent); margin-bottom: 1rem; padding-bottom: 8px; border-bottom: 1px solid var(--blue); font-weight: 600; }
+/* ── GRID LAYOUT ──────────────────────────────────────────────── */
+.split { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; align-items: start; }
 
-/* ── FORM ── */
-.form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1.2rem; }
-.form-group label { display: block; font-size: 12px; color: var(--gray); margin-bottom: 5px; font-weight: 500; }
-.form-group label .hint { color: var(--accent); font-size: 10px; margin-left: 5px; }
-.form-group input[type=number] { width: 100%; background: var(--blue); border: 1px solid #2a4a7f; border-radius: 8px; padding: 10px 12px; color: var(--white); font-size: 14px; outline: none; transition: border-color 0.2s; }
-.form-group input[type=number]:focus { border-color: var(--accent); }
+/* ── CARDS ────────────────────────────────────────────────────── */
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  overflow: hidden;
+}
+.card-header {
+  padding: 1rem 1.5rem;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.card-title {
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+}
+.card-title span { color: var(--cyan); margin-right: 8px; }
+.card-body { padding: 1.5rem; }
 
-/* ── BUTTONS ── */
-.sample-row { display: flex; gap: 8px; margin-bottom: 1rem; flex-wrap: wrap; }
-.sample-btn { padding: 6px 14px; border-radius: 20px; border: 1px solid; font-size: 12px; cursor: pointer; transition: all 0.2s; font-weight: 600; background: transparent; }
-.sample-btn.fraud  { border-color: var(--red);    color: var(--red);    }
-.sample-btn.normal { border-color: var(--green);  color: var(--green);  }
-.sample-btn.medium { border-color: var(--yellow); color: var(--yellow); }
-.sample-btn:hover  { opacity: 0.8; transform: translateY(-1px); }
+/* ── FORM ─────────────────────────────────────────────────────── */
+.preset-row { display: flex; gap: 6px; margin-bottom: 1.2rem; flex-wrap: wrap; }
+.preset-btn {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 6px 12px;
+  border-radius: 4px;
+  border: 1px solid;
+  cursor: pointer;
+  background: transparent;
+  transition: all 0.15s;
+}
+.preset-btn.p-fraud  { border-color: var(--red);   color: var(--red);   }
+.preset-btn.p-border { border-color: var(--amber);  color: var(--amber); }
+.preset-btn.p-normal { border-color: var(--green);  color: var(--green); }
+.preset-btn:hover    { filter: brightness(1.2); transform: translateY(-1px); }
 
-.predict-btn { width: 100%; padding: 13px; background: var(--accent); border: none; border-radius: 10px; color: var(--navy); font-size: 15px; font-weight: 700; cursor: pointer; transition: all 0.2s; }
-.predict-btn:hover   { background: #17a0ab; transform: translateY(-1px); }
-.predict-btn:active  { transform: scale(0.98); }
-.predict-btn:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
+.fields-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1.2rem; }
+.field-wrap label {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 6px;
+}
+.field-label { font-size: 12px; color: var(--text-dim); font-weight: 500; }
+.field-hint  { font-family: var(--mono); font-size: 9px; color: var(--cyan); opacity: 0.8; }
 
-/* ── RESULT ── */
-#result-panel { background: var(--card); border: 1px solid var(--blue); border-radius: 12px; padding: 1.5rem; display: none; }
-#result-panel.show { display: block; }
-.result-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.2rem; padding-bottom: 1rem; border-bottom: 1px solid var(--blue); flex-wrap: wrap; gap: 1rem; }
-.score-big { font-size: 3.5rem; font-weight: 800; line-height: 1; }
-.score-label { font-size: 12px; color: var(--gray); margin-top: 4px; }
-.prog-wrap { background: var(--navy); border-radius: 6px; height: 8px; overflow: hidden; margin-top: 8px; width: 140px; }
-.prog-bar  { height: 100%; border-radius: 6px; transition: width 0.8s ease; }
-.tier-badge { padding: 7px 20px; border-radius: 20px; font-size: 15px; font-weight: 700; text-align: center; border: 2px solid; min-width: 110px; }
-.mini-scores { display: grid; grid-template-columns: repeat(3,1fr); gap: 6px; margin-top: 10px; }
-.mini-score { background: var(--navy); border-radius: 7px; padding: 7px; text-align: center; }
-.mini-score .mv { font-size: 13px; font-weight: 700; color: var(--accent); }
-.mini-score .ml { font-size: 10px; color: var(--gray); margin-top: 2px; }
-.action-box { padding: 12px 16px; border-radius: 8px; margin-bottom: 1rem; font-size: 14px; font-weight: 600; border: 1px solid; }
-.reasons-title { font-size: 11px; color: var(--gray); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 8px; }
-.reason-item { display: flex; align-items: flex-start; gap: 10px; padding: 10px 12px; background: var(--navy); border-radius: 8px; margin-bottom: 7px; border-left: 3px solid var(--accent); }
-.reason-rank { width: 22px; height: 22px; background: var(--accent); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; color: var(--navy); flex-shrink: 0; margin-top: 1px; }
-.reason-text { font-size: 13px; line-height: 1.5; }
-.reason-shap { font-size: 11px; color: var(--accent); margin-top: 2px; }
+.field-input {
+  width: 100%;
+  background: rgba(255,255,255,0.03);
+  border: 1px solid var(--border2);
+  border-radius: 6px;
+  padding: 10px 12px;
+  color: var(--text);
+  font-family: var(--mono);
+  font-size: 13px;
+  outline: none;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+.field-input:focus {
+  border-color: var(--cyan);
+  box-shadow: 0 0 0 3px var(--cyan-dim);
+}
 
-/* ── LOADING ── */
-.loading { display: none; text-align: center; padding: 2rem; color: var(--gray); }
-.spinner { width: 38px; height: 38px; border: 3px solid var(--blue); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.8s linear infinite; margin: 0 auto 1rem; }
+.submit-btn {
+  width: 100%;
+  padding: 14px;
+  background: var(--cyan);
+  border: none;
+  border-radius: 8px;
+  color: var(--bg);
+  font-family: var(--mono);
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: all 0.2s;
+  position: relative;
+  overflow: hidden;
+}
+.submit-btn::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, rgba(255,255,255,0.15), transparent);
+}
+.submit-btn:hover    { box-shadow: 0 0 24px var(--cyan-glow); transform: translateY(-1px); }
+.submit-btn:active   { transform: scale(0.98); }
+.submit-btn:disabled { opacity: 0.4; cursor: not-allowed; transform: none; box-shadow: none; }
+
+/* ── RESULT PANEL ─────────────────────────────────────────────── */
+.result-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  overflow: hidden;
+  display: none;
+}
+.result-card.show { display: block; animation: fadeUp 0.3s ease both; }
+
+.result-hero {
+  padding: 2rem;
+  text-align: center;
+  border-bottom: 1px solid var(--border);
+  position: relative;
+  overflow: hidden;
+}
+.result-hero::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  opacity: 0.05;
+  background: radial-gradient(ellipse at center, var(--result-color, var(--cyan)), transparent 70%);
+}
+
+.score-num {
+  font-family: var(--mono);
+  font-size: 4rem;
+  font-weight: 700;
+  line-height: 1;
+  color: var(--result-color, var(--cyan));
+  text-shadow: 0 0 30px var(--result-color, var(--cyan-glow));
+  position: relative;
+}
+.score-sub { font-size: 11px; color: var(--muted); margin-top: 6px; text-transform: uppercase; letter-spacing: 0.1em; }
+
+.tier-tag {
+  display: inline-block;
+  margin-top: 14px;
+  padding: 6px 20px;
+  border-radius: 4px;
+  font-family: var(--mono);
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  border: 1px solid var(--result-color, var(--cyan));
+  color: var(--result-color, var(--cyan));
+  background: rgba(0,0,0,0.3);
+}
+
+.score-track {
+  margin: 14px auto 0;
+  width: 200px;
+  height: 4px;
+  background: rgba(255,255,255,0.08);
+  border-radius: 2px;
+  overflow: hidden;
+}
+.score-fill {
+  height: 100%;
+  border-radius: 2px;
+  transition: width 0.8s cubic-bezier(0.23, 1, 0.32, 1);
+  background: var(--result-color, var(--cyan));
+  box-shadow: 0 0 8px var(--result-color, var(--cyan));
+}
+
+/* Model score trio */
+.model-trio {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1px;
+  background: var(--border);
+  border-top: 1px solid var(--border);
+}
+.model-cell {
+  background: var(--surface2);
+  padding: 12px;
+  text-align: center;
+}
+.model-cell .mc-val { font-family: var(--mono); font-size: 14px; font-weight: 700; color: var(--cyan); }
+.model-cell .mc-lbl { font-size: 10px; color: var(--muted); margin-top: 3px; text-transform: uppercase; letter-spacing: 0.06em; }
+
+/* Action strip */
+.action-strip {
+  margin: 1.2rem;
+  padding: 12px 16px;
+  border-radius: 6px;
+  border-left: 3px solid;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+/* Reason items */
+.reasons-wrap { padding: 0 1.2rem 1.2rem; }
+.reasons-label {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 10px;
+}
+.reason-row {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  padding: 11px 14px;
+  background: rgba(255,255,255,0.02);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  margin-bottom: 7px;
+  transition: background 0.15s;
+}
+.reason-row:hover { background: rgba(0,229,255,0.03); }
+.reason-num {
+  flex-shrink: 0;
+  width: 22px; height: 22px;
+  border-radius: 50%;
+  background: var(--cyan);
+  color: var(--bg);
+  font-family: var(--mono);
+  font-size: 10px;
+  font-weight: 700;
+  display: flex; align-items: center; justify-content: center;
+  margin-top: 1px;
+}
+.reason-body .r-text { font-size: 13px; line-height: 1.5; }
+.reason-body .r-shap { font-family: var(--mono); font-size: 10px; color: var(--cyan); margin-top: 3px; }
+
+/* ── LOADING ──────────────────────────────────────────────────── */
+.loading-wrap { display: none; padding: 3rem; text-align: center; }
+.scan-ring {
+  width: 44px; height: 44px;
+  border: 2px solid var(--border2);
+  border-top-color: var(--cyan);
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+  margin: 0 auto 1rem;
+}
 @keyframes spin { to { transform: rotate(360deg); } }
+.loading-wrap p { font-family: var(--mono); font-size: 11px; color: var(--muted); letter-spacing: 0.08em; }
 
-/* ── INFO BOXES ── */
-.info-box { padding: 10px 14px; border-radius: 8px; font-size: 12px; line-height: 1.7; margin-bottom: 1rem; border-left: 3px solid; }
-.info-box.accent { border-color: var(--accent); background: rgba(29,184,196,0.07); color: var(--gray); }
-.info-box.yellow { border-color: var(--yellow); background: rgba(245,200,66,0.07); color: var(--gray); }
+/* ── SCAN TAB ─────────────────────────────────────────────────── */
+.scan-note {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 14px 16px;
+  font-size: 12px;
+  line-height: 1.7;
+  margin-bottom: 1.2rem;
+  color: var(--text-dim);
+}
+.scan-note strong { color: var(--cyan); }
 
-/* ── FIELD ROW ── */
-.field-row { display: flex; justify-content: space-between; padding: 7px 0; border-bottom: 1px solid var(--blue); font-size: 13px; }
-.field-row:last-child { border-bottom: none; }
+/* ── HISTORY TAB ──────────────────────────────────────────────── */
+.hist-table { width:100%; border-collapse:collapse; font-size:12px; }
+.hist-table th {
+  font-family: var(--mono);
+  font-size: 9px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--muted);
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--border);
+  text-align: left;
+  font-weight: 400;
+}
+.hist-table td { padding: 10px 14px; border-bottom: 1px solid var(--border); }
+.hist-table tr:hover td { background: rgba(0,229,255,0.02); }
+.tier-chip {
+  font-family: var(--mono);
+  font-size: 9px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 3px 8px;
+  border-radius: 3px;
+  border: 1px solid;
+}
 
-/* ── HISTORY TABLE ── */
-.history-table { width: 100%; border-collapse: collapse; font-size: 13px; }
-.history-table th { background: var(--blue); padding: 10px 12px; text-align: left; font-weight: 500; color: var(--gray); font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em; }
-.history-table td { padding: 10px 12px; border-bottom: 1px solid var(--blue); }
-.history-table tr:hover td { background: rgba(29,184,196,0.04); }
-.tier-pill { padding: 3px 10px; border-radius: 10px; font-size: 11px; font-weight: 700; }
+/* ── ABOUT TAB ────────────────────────────────────────────────── */
+.spec-grid { display: grid; grid-template-columns:1fr 1fr; gap:1.5rem; }
+.spec-row { display: flex; justify-content: space-between; padding: 9px 0; border-bottom: 1px solid var(--border); font-size: 13px; }
+.spec-row:last-child { border-bottom: none; }
+.spec-key { color: var(--muted); }
+.spec-val { color: var(--text); font-weight: 500; }
+.spec-val.c { color: var(--cyan); font-family: var(--mono); }
 
-/* ── OCR UPLOAD AREA ── */
-.ocr-upload { display: flex; align-items: center; justify-content: center; gap: 8px; padding: 12px; background: var(--navy); border: 1px dashed var(--blue); border-radius: 8px; cursor: pointer; font-size: 13px; color: var(--gray); transition: border-color 0.2s; }
-.ocr-upload:hover { border-color: var(--accent); color: var(--accent); }
+.tier-list { display: flex; flex-direction: column; gap: 10px; }
+.tier-item { display: flex; align-items: center; gap: 14px; padding: 12px; background: rgba(255,255,255,0.02); border: 1px solid var(--border); border-radius: 8px; }
+.tier-badge-sm {
+  font-family: var(--mono);
+  font-size: 9px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 5px 12px;
+  border-radius: 3px;
+  font-weight: 700;
+  min-width: 76px;
+  text-align: center;
+  flex-shrink: 0;
+}
+.tier-desc { font-size: 12px; color: var(--text-dim); }
 
+.feat-group { display: flex; gap: 8px; align-items: center; padding: 7px 0; border-bottom: 1px solid var(--border); }
+.feat-group:last-child { border-bottom: none; }
+.feat-dot { width:8px; height:8px; border-radius:50%; flex-shrink:0; }
+.feat-name { font-size:12px; color:var(--text-dim); flex:1; }
+.feat-count { font-family: var(--mono); font-size:10px; color:var(--muted); }
+
+/* ── RESPONSIVE ───────────────────────────────────────────────── */
 @media (max-width: 800px) {
-  .two-col, .stats-row, .form-grid, .mini-scores { grid-template-columns: 1fr; }
-  .result-top { flex-direction: column; align-items: flex-start; }
-  .hero h2 { font-size: 1.5rem; }
+  .split, .metrics, .spec-grid, .fields-grid, .model-trio { grid-template-columns: 1fr; }
+  nav { padding: 0 1rem; }
+  .container { padding: 1rem; }
+  .hero h1 { font-size: 1.8rem; }
+  .nav-sub, .live-dot { display: none; }
 }
 </style>
 </head>
 <body>
 
+<div class="orb orb-1"></div>
+<div class="orb orb-2"></div>
+<div class="orb orb-3"></div>
+
 <!-- NAV -->
-<nav>
-  <div class="nav-brand">
-    <div class="nav-icon">🛡</div>
+<nav class="above">
+  <div class="nav-left">
+    <div class="logo-mark"><span>FS</span></div>
     <div>
-      <h1>Insurance Fraud Detection System</h1>
-      <p>Multimodal AI · XGBoost + LightGBM + RandomForest</p>
+      <div class="nav-title"><em>Fraud</em>Shield AI</div>
+      <div class="nav-sub">Insurance Intelligence Platform</div>
     </div>
   </div>
-  <div class="nav-badge">AUC‑ROC: {{ model_auc }} &nbsp;|&nbsp; F1: {{ model_f1 }}</div>
+  <div style="display:flex;align-items:center;gap:16px;">
+    <div class="live-dot">LIVE</div>
+    <div class="nav-pill">AUC‑ROC {{ model_auc }} · F1 {{ model_f1 }}</div>
+  </div>
 </nav>
 
-<div class="container">
+<div class="container above">
 
   <!-- HERO -->
   <div class="hero">
-    <h2>AI‑Powered <span>Fraud Intelligence</span> Platform</h2>
-    <p>Trained on 700,000+ CMS Medicare claims · 57 engineered features · SHAP explainability</p>
-    <div class="hero-badges">
-      <span class="badge">CMS Medicare Dataset</span>
-      <span class="badge">700K+ Claims Trained</span>
-      <span class="badge">57 Engineered Features</span>
-      <span class="badge">SHAP Explainability</span>
-      <span class="badge">Ensemble Model</span>
-      <span class="badge">Document Scanner</span>
+    <div class="hero-eyebrow">Ensemble Machine Learning · SHAP Explainability</div>
+    <h1>
+      Detect Insurance Fraud<br>
+      <span class="dim">with</span> <span class="accent">AI Precision</span>
+    </h1>
+    <p class="hero-desc">
+      Trained on 700,000+ real CMS Medicare claim records.
+      Three models, one ensemble — explaining every decision in plain English.
+    </p>
+    <div class="hero-tags">
+      <span class="tag hot">XGBoost</span>
+      <span class="tag hot">LightGBM</span>
+      <span class="tag hot">Random Forest</span>
+      <span class="tag">SHAP Explainability</span>
+      <span class="tag">Optuna Tuned</span>
+      <span class="tag">SMOTE Balanced</span>
+      <span class="tag">CMS Medicare Dataset</span>
     </div>
   </div>
 
-  <!-- STATS -->
-  <div class="stats-row">
-    <div class="stat-card"><div class="val">{{ model_auc }}</div><div class="lbl">AUC‑ROC Score</div></div>
-    <div class="stat-card"><div class="val">{{ model_f1 }}</div><div class="lbl">F1‑Score</div></div>
-    <div class="stat-card"><div class="val">57</div><div class="lbl">Engineered Features</div></div>
-    <div class="stat-card"><div class="val" id="scan-count">0</div><div class="lbl">Claims Analysed</div></div>
+  <!-- METRICS -->
+  <div class="metrics">
+    <div class="metric">
+      <div class="m-val" id="m-auc">{{ model_auc }}</div>
+      <div class="m-lbl">AUC‑ROC</div>
+      <div class="m-sub">Validation set</div>
+    </div>
+    <div class="metric">
+      <div class="m-val" id="m-f1">{{ model_f1 }}</div>
+      <div class="m-lbl">F1‑Score</div>
+      <div class="m-sub">Fraud class</div>
+    </div>
+    <div class="metric">
+      <div class="m-val">74</div>
+      <div class="m-lbl">Features</div>
+      <div class="m-sub">7 feature groups</div>
+    </div>
+    <div class="metric">
+      <div class="m-val" id="scan-count">0</div>
+      <div class="m-lbl">Scanned</div>
+      <div class="m-sub">This session</div>
+    </div>
   </div>
 
   <!-- TABS -->
-  <div class="tabs">
-    <button class="tab active" onclick="switchTab('manual',this)">⚙ Manual Input</button>
-    <button class="tab"        onclick="switchTab('scan',this)">📄 Document Scanner</button>
-    <button class="tab"        onclick="switchTab('history',this)">📋 History</button>
-    <button class="tab"        onclick="switchTab('about',this)">ℹ How It Works</button>
+  <div class="tab-bar">
+    <button class="tab-btn active" onclick="switchTab('predict',this)">01 · Predict</button>
+    <button class="tab-btn"        onclick="switchTab('scanner',this)">02 · Claim Scanner</button>
+    <button class="tab-btn"        onclick="switchTab('history',this)">03 · History</button>
+    <button class="tab-btn"        onclick="switchTab('intel',this)">04 · Intelligence</button>
   </div>
 
-  <!-- ═══ TAB 1 — MANUAL INPUT ═══ -->
-  <div id="tab-manual" class="tab-panel active">
-    <div class="two-col">
+  <!-- ═══════════════════════════════ TAB 1 — PREDICT ═══ -->
+  <div id="tab-predict" class="tab-panel active">
+    <div class="split">
 
-      <div class="panel">
-        <h3>Provider Claim Features</h3>
-        <p style="font-size:12px;color:var(--gray);margin-bottom:8px;">Quick‑fill sample:</p>
-        <div class="sample-row">
-          <button class="sample-btn fraud"  onclick="fillSample('fraud')">🚨 High Fraud</button>
-          <button class="sample-btn medium" onclick="fillSample('medium')">⚠ Borderline</button>
-          <button class="sample-btn normal" onclick="fillSample('normal')">✅ Normal</button>
+      <!-- Input card -->
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title"><span>⬡</span> Provider Feature Input</div>
+          <div style="font-family:var(--mono);font-size:10px;color:var(--muted);">MANUAL ENTRY</div>
         </div>
-        <div class="form-grid">
-          <div class="form-group">
-            <label>Avg IP Reimbursement ($)<span class="hint">fraud &gt;$15k</span></label>
-            <input type="number" id="ip_avg_reimbursement" value="5000" min="0" step="100">
+        <div class="card-body">
+          <div class="preset-row">
+            <button class="preset-btn p-fraud"  onclick="fill('fraud')">⚠ High Fraud</button>
+            <button class="preset-btn p-border" onclick="fill('medium')">~ Borderline</button>
+            <button class="preset-btn p-normal" onclick="fill('normal')">✓ Normal</button>
           </div>
-          <div class="form-group">
-            <label>Avg Hospital Stay (days)<span class="hint">fraud &gt;20</span></label>
-            <input type="number" id="ip_avg_stay_days" value="4" min="0" step="0.5">
+
+          <div class="fields-grid">
+            <div class="field-wrap">
+              <label><span class="field-label">Avg Reimbursement ($)</span><span class="field-hint">fraud &gt;$15k</span></label>
+              <input class="field-input" type="number" id="f_reimb" value="5000" min="0" step="100">
+            </div>
+            <div class="field-wrap">
+              <label><span class="field-label">Avg Hospital Stay (days)</span><span class="field-hint">fraud &gt;20d</span></label>
+              <input class="field-input" type="number" id="f_stay" value="4" min="0" step="0.5">
+            </div>
+            <div class="field-wrap">
+              <label><span class="field-label">Inpatient Claim Count</span><span class="field-hint">fraud &gt;60</span></label>
+              <input class="field-input" type="number" id="f_claims" value="15" min="0">
+            </div>
+            <div class="field-wrap">
+              <label><span class="field-label">Total Unique Patients</span><span class="field-hint">fraud &gt;50</span></label>
+              <input class="field-input" type="number" id="f_pats" value="12" min="0">
+            </div>
+            <div class="field-wrap">
+              <label><span class="field-label">Avg Chronic Conditions</span><span class="field-hint">fraud &gt;5</span></label>
+              <input class="field-input" type="number" id="f_chronic" value="2" min="0" max="11" step="0.1">
+            </div>
+            <div class="field-wrap">
+              <label><span class="field-label">Unique Physicians Used</span><span class="field-hint">fraud &gt;20</span></label>
+              <input class="field-input" type="number" id="f_phys" value="6" min="0">
+            </div>
           </div>
-          <div class="form-group">
-            <label>Inpatient Claim Count<span class="hint">fraud &gt;60</span></label>
-            <input type="number" id="ip_claim_count" value="15" min="0">
-          </div>
-          <div class="form-group">
-            <label>Total Unique Patients<span class="hint">fraud &gt;50</span></label>
-            <input type="number" id="total_unique_patients" value="12" min="0">
-          </div>
-          <div class="form-group">
-            <label>Avg Chronic Conditions<span class="hint">fraud &gt;5</span></label>
-            <input type="number" id="ip_avg_chronic_cond" value="2" min="0" max="11" step="0.1">
-          </div>
-          <div class="form-group">
-            <label>Unique Physicians Used<span class="hint">fraud &gt;20</span></label>
-            <input type="number" id="ip_unique_attending_phys" value="6" min="0">
-          </div>
+
+          <button class="submit-btn" id="predict-btn" onclick="runPredict()">
+            Run Fraud Analysis
+          </button>
         </div>
-        <button class="predict-btn" id="predict-btn" onclick="predict()">Analyse for Fraud</button>
       </div>
 
+      <!-- Result -->
       <div>
-        <div class="loading" id="loading">
-          <div class="spinner"></div>
-          <p>Analysing with AI ensemble…</p>
+        <div class="loading-wrap" id="loading">
+          <div class="scan-ring"></div>
+          <p>Running ensemble inference…</p>
         </div>
-        <div id="result-panel">
-          <div class="result-top">
-            <div>
-              <div class="score-big" id="score-val">—</div>
-              <div class="score-label">Fraud Probability</div>
-              <div class="prog-wrap"><div class="prog-bar" id="score-bar" style="width:0%"></div></div>
-            </div>
-            <div>
-              <div class="tier-badge" id="tier-badge">—</div>
-              <div style="font-size:11px;color:var(--gray);margin-top:8px;text-align:center;" id="predicted-at"></div>
-              <div class="mini-scores">
-                <div class="mini-score"><div class="mv" id="xgb-s">—</div><div class="ml">XGBoost</div></div>
-                <div class="mini-score"><div class="mv" id="lgbm-s">—</div><div class="ml">LightGBM</div></div>
-                <div class="mini-score"><div class="mv" id="rf-s">—</div><div class="ml">RF</div></div>
-              </div>
-            </div>
+
+        <div class="result-card" id="result-card">
+          <div class="result-hero" id="result-hero">
+            <div class="score-num" id="score-num">—</div>
+            <div class="score-sub">Fraud Probability Score</div>
+            <div class="tier-tag" id="tier-tag">—</div>
+            <div class="score-track"><div class="score-fill" id="score-fill" style="width:0%"></div></div>
           </div>
-          <div class="action-box" id="action-box">—</div>
-          <div class="reasons-title">Top Fraud Signals — SHAP Explanation</div>
-          <div id="reasons-container"></div>
+
+          <div class="model-trio">
+            <div class="model-cell"><div class="mc-val" id="v-xgb">—</div><div class="mc-lbl">XGBoost</div></div>
+            <div class="model-cell"><div class="mc-val" id="v-lgbm">—</div><div class="mc-lbl">LightGBM</div></div>
+            <div class="model-cell"><div class="mc-val" id="v-rf">—</div><div class="mc-lbl">RandomForest</div></div>
+          </div>
+
+          <div class="action-strip" id="action-strip">—</div>
+
+          <div class="reasons-wrap">
+            <div class="reasons-label">Top fraud signals — SHAP attribution</div>
+            <div id="reasons-list"></div>
+          </div>
+
+          <div style="padding:0 1.2rem 1.2rem;">
+            <div style="font-family:var(--mono);font-size:10px;color:var(--muted);text-align:right;" id="pred-time"></div>
+          </div>
         </div>
       </div>
 
     </div>
   </div>
 
-  <!-- ═══ TAB 2 — DOCUMENT SCANNER ═══ -->
-  <div id="tab-scan" class="tab-panel">
-    <div class="two-col">
+  <!-- ═══════════════════════════════ TAB 2 — CLAIM SCANNER ═══ -->
+  <div id="tab-scanner" class="tab-panel">
+    <div class="split">
 
-      <div class="panel">
-        <h3>Document Scanner</h3>
-
-        <div class="info-box accent">
-          <strong style="color:var(--accent);">How it works:</strong>
-          Enter the key values from a physical or digital insurance claim document. The AI scores
-          each field for suspicion and explains which ones triggered the fraud signal.
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title"><span>◈</span> Claim Document Analysis</div>
+          <div style="font-family:var(--mono);font-size:10px;color:var(--muted);">FIELD ENTRY</div>
         </div>
+        <div class="card-body">
+          <div class="scan-note">
+            <strong>Investigator workflow:</strong> Read values from the physical or digital claim form,
+            enter them below, and the AI instantly scores every field for suspicious patterns.
+          </div>
+          <div class="scan-note" style="border-color:rgba(255,184,48,0.25);background:rgba(255,184,48,0.04);">
+            <strong style="color:var(--amber);">Test values:</strong><br>
+            FRAUD → $35,000 · 45 days · 120 claims · 7 diagnoses · 80 patients · 35 physicians<br>
+            NORMAL → $4,200 · 3 days · 12 claims · 2 diagnoses · 9 patients · 5 physicians
+          </div>
 
-        <div class="info-box yellow">
-          <strong style="color:var(--yellow);">Test values to try:</strong><br>
-          HIGH FRAUD → Reimb: $35,000 · Stay: 45 days · Claims: 120 · Diagnoses: 7<br>
-          NORMAL &nbsp;&nbsp;&nbsp;&nbsp;→ Reimb: $4,200 &nbsp;· Stay: 3 days &nbsp;· Claims: 12 &nbsp;· Diagnoses: 2
+          <div class="preset-row">
+            <button class="preset-btn p-fraud"  onclick="fillScan('fraud')">⚠ Fraud Claim</button>
+            <button class="preset-btn p-border" onclick="fillScan('medium')">~ Borderline</button>
+            <button class="preset-btn p-normal" onclick="fillScan('normal')">✓ Normal Claim</button>
+          </div>
+
+          <div class="fields-grid">
+            <div class="field-wrap">
+              <label><span class="field-label">Claim Amount ($)</span></label>
+              <input class="field-input" type="number" id="s_reimb" placeholder="e.g. 15000" min="0" step="100">
+            </div>
+            <div class="field-wrap">
+              <label><span class="field-label">Hospital Stay (days)</span></label>
+              <input class="field-input" type="number" id="s_stay" placeholder="e.g. 12" min="0" step="0.5">
+            </div>
+            <div class="field-wrap">
+              <label><span class="field-label">Claims Filed</span></label>
+              <input class="field-input" type="number" id="s_claims" placeholder="e.g. 40" min="0">
+            </div>
+            <div class="field-wrap">
+              <label><span class="field-label">Diagnoses / Conditions</span></label>
+              <input class="field-input" type="number" id="s_chronic" placeholder="e.g. 4" min="0" max="11" step="0.5">
+            </div>
+            <div class="field-wrap">
+              <label><span class="field-label">Unique Patients</span></label>
+              <input class="field-input" type="number" id="s_pats" placeholder="e.g. 25" min="0">
+            </div>
+            <div class="field-wrap">
+              <label><span class="field-label">Unique Physicians</span></label>
+              <input class="field-input" type="number" id="s_phys" placeholder="e.g. 10" min="0">
+            </div>
+          </div>
+
+          <button class="submit-btn" onclick="runScan(event)">Scan &amp; Detect Fraud</button>
         </div>
-
-        <p style="font-size:12px;color:var(--gray);margin-bottom:8px;">Quick‑fill:</p>
-        <div class="sample-row">
-          <button class="sample-btn fraud"  onclick="fillScan('fraud')">🚨 Fraud Claim</button>
-          <button class="sample-btn medium" onclick="fillScan('medium')">⚠ Borderline</button>
-          <button class="sample-btn normal" onclick="fillScan('normal')">✅ Normal Claim</button>
-        </div>
-
-        <div class="form-grid">
-          <div class="form-group">
-            <label>Claim / Reimbursement Amount ($)</label>
-            <input type="number" id="scan_reimb" placeholder="e.g. 15000" min="0" step="100">
-          </div>
-          <div class="form-group">
-            <label>Hospital Stay Duration (days)</label>
-            <input type="number" id="scan_stay" placeholder="e.g. 12" min="0" step="0.5">
-          </div>
-          <div class="form-group">
-            <label>Number of Claims Filed</label>
-            <input type="number" id="scan_claims" placeholder="e.g. 40" min="0">
-          </div>
-          <div class="form-group">
-            <label>Number of Diagnoses / Conditions</label>
-            <input type="number" id="scan_chronic" placeholder="e.g. 4" min="0" max="11" step="0.5">
-          </div>
-          <div class="form-group">
-            <label>Total Unique Patients</label>
-            <input type="number" id="scan_patients" placeholder="e.g. 25" min="0">
-          </div>
-          <div class="form-group">
-            <label>Unique Physicians Used</label>
-            <input type="number" id="scan_phys" placeholder="e.g. 10" min="0">
-          </div>
-        </div>
-
-        <!-- OCR optional -->
-        <div style="border-top:1px solid var(--blue);padding-top:1rem;margin-top:0.5rem;">
-          <p style="font-size:11px;color:var(--gray);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:8px;">
-            Optional — Auto‑Extract via OCR (EasyOCR)
-          </p>
-          <label class="ocr-upload">
-            📎 &nbsp;Upload PDF / JPG / PNG — auto‑fills fields above
-            <input type="file" id="file-input" accept=".pdf,.jpg,.jpeg,.png"
-                   style="display:none" onchange="ocrExtract(this)">
-          </label>
-          <div id="ocr-status" style="font-size:12px;text-align:center;margin-top:6px;min-height:18px;color:var(--gray);"></div>
-        </div>
-
-        <button class="predict-btn" onclick="scanManual(event)" style="margin-top:1rem;">
-          Scan &amp; Detect Fraud
-        </button>
       </div>
 
-      <!-- Scan result -->
-      <div id="scan-result-panel" style="display:none;" class="panel">
-        <h3>Scan Result</h3>
-        <div id="scan-content"></div>
+      <div id="scan-result-card" style="display:none;" class="card">
+        <div class="card-header">
+          <div class="card-title"><span>◎</span> Scan Result</div>
+          <div id="scan-time" style="font-family:var(--mono);font-size:10px;color:var(--muted);"></div>
+        </div>
+        <div class="card-body" id="scan-body"></div>
       </div>
 
     </div>
   </div>
 
-  <!-- ═══ TAB 3 — HISTORY ═══ -->
+  <!-- ═══════════════════════════════ TAB 3 — HISTORY ═══ -->
   <div id="tab-history" class="tab-panel">
-    <div class="panel">
-      <h3>Prediction History — This Session</h3>
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title"><span>◷</span> Session Prediction Log</div>
+        <div style="font-family:var(--mono);font-size:10px;color:var(--muted);" id="hist-count">0 records</div>
+      </div>
       <div style="overflow-x:auto;">
-        <table class="history-table">
+        <table class="hist-table">
           <thead>
             <tr>
               <th>#</th><th>Time</th><th>Source</th>
-              <th>Fraud Score</th><th>Risk Tier</th><th>Decision</th>
+              <th>Score</th><th>Risk</th><th>Decision</th>
               <th>Reimbursement</th><th>Stay</th><th>Claims</th>
             </tr>
           </thead>
-          <tbody id="history-body">
+          <tbody id="hist-body">
             <tr>
-              <td colspan="9" style="text-align:center;color:var(--gray);padding:2rem;">
-                No predictions yet — run an analysis first
+              <td colspan="9" style="text-align:center;color:var(--muted);padding:2.5rem;font-family:var(--mono);font-size:11px;">
+                NO RECORDS YET — RUN A PREDICTION FIRST
               </td>
             </tr>
           </tbody>
@@ -356,289 +850,287 @@ nav {
     </div>
   </div>
 
-  <!-- ═══ TAB 4 — HOW IT WORKS ═══ -->
-  <div id="tab-about" class="tab-panel">
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:1.5rem;">
+  <!-- ═══════════════════════════════ TAB 4 — INTELLIGENCE ═══ -->
+  <div id="tab-intel" class="tab-panel">
+    <div class="spec-grid">
 
-      <div class="panel">
-        <h3>Model Architecture</h3>
-        <div style="font-size:13px;color:var(--gray);">
-          <div class="field-row"><span>Dataset</span><span style="color:var(--white);">CMS Medicare Fraud Detection</span></div>
-          <div class="field-row"><span>Records</span><span style="color:var(--white);">700,000+ claim rows</span></div>
-          <div class="field-row"><span>Provider labels</span><span style="color:var(--white);">5,410 providers</span></div>
-          <div class="field-row"><span>Features</span><span style="color:var(--white);">57 engineered</span></div>
-          <div class="field-row"><span>Primary model</span><span style="color:var(--white);">XGBoost (Optuna‑tuned)</span></div>
-          <div class="field-row"><span>Secondary</span><span style="color:var(--white);">LightGBM (Optuna‑tuned)</span></div>
-          <div class="field-row"><span>Tertiary</span><span style="color:var(--white);">Random Forest</span></div>
-          <div class="field-row"><span>Ensemble</span><span style="color:var(--white);">Soft voting 3:3:1</span></div>
-          <div class="field-row"><span>Class balancing</span><span style="color:var(--white);">SMOTE (train only)</span></div>
-          <div class="field-row"><span>Explainability</span><span style="color:var(--white);">SHAP TreeExplainer</span></div>
-          <div class="field-row"><span>Threshold</span><span style="color:var(--accent);">{{ threshold }}</span></div>
-          <div class="field-row"><span>AUC‑ROC</span><span style="color:var(--accent);">{{ model_auc }}</span></div>
+      <div class="card">
+        <div class="card-header"><div class="card-title"><span>◆</span> Model Architecture</div></div>
+        <div class="card-body">
+          <div class="spec-row"><span class="spec-key">Dataset</span><span class="spec-val">CMS Medicare Fraud Detection</span></div>
+          <div class="spec-row"><span class="spec-key">Records</span><span class="spec-val">700,000+ claim rows</span></div>
+          <div class="spec-row"><span class="spec-key">Providers labeled</span><span class="spec-val">5,410 providers</span></div>
+          <div class="spec-row"><span class="spec-key">Fraud rate</span><span class="spec-val">9.4% (before SMOTE)</span></div>
+          <div class="spec-row"><span class="spec-key">Model 1</span><span class="spec-val">XGBoost · Optuna 50 trials</span></div>
+          <div class="spec-row"><span class="spec-key">Model 2</span><span class="spec-val">LightGBM · Optuna 50 trials</span></div>
+          <div class="spec-row"><span class="spec-key">Model 3</span><span class="spec-val">Random Forest · 300 trees</span></div>
+          <div class="spec-row"><span class="spec-key">Ensemble</span><span class="spec-val">Soft voting 3:3:1</span></div>
+          <div class="spec-row"><span class="spec-key">Class balance</span><span class="spec-val">SMOTE (train fold only)</span></div>
+          <div class="spec-row"><span class="spec-key">Explainability</span><span class="spec-val">SHAP TreeExplainer (exact)</span></div>
+          <div class="spec-row"><span class="spec-key">Decision threshold</span><span class="spec-val c">{{ threshold }}</span></div>
+          <div class="spec-row"><span class="spec-key">AUC‑ROC</span><span class="spec-val c">{{ model_auc }}</span></div>
+          <div class="spec-row"><span class="spec-key">F1‑Score</span><span class="spec-val c">{{ model_f1 }}</span></div>
         </div>
       </div>
 
-      <div class="panel">
-        <h3>Feature Groups</h3>
-        <div style="font-size:13px;color:var(--gray);">
-          <div class="field-row"><span style="display:flex;align-items:center;gap:6px;"><span style="width:10px;height:10px;background:#22C97A;border-radius:50%;display:inline-block;flex-shrink:0;"></span>Baseline (M1)</span><span style="color:var(--white);">Raw aggregated stats</span></div>
-          <div class="field-row"><span style="display:flex;align-items:center;gap:6px;"><span style="width:10px;height:10px;background:#1DB8C4;border-radius:50%;display:inline-block;flex-shrink:0;"></span>Ratio features</span><span style="color:var(--white);">Reimb per patient</span></div>
-          <div class="field-row"><span style="display:flex;align-items:center;gap:6px;"><span style="width:10px;height:10px;background:#C87EFF;border-radius:50%;display:inline-block;flex-shrink:0;"></span>Risk scores</span><span style="color:var(--white);">Financial, volume, stay</span></div>
-          <div class="field-row"><span style="display:flex;align-items:center;gap:6px;"><span style="width:10px;height:10px;background:#F5C842;border-radius:50%;display:inline-block;flex-shrink:0;"></span>Interaction features</span><span style="color:var(--white);">Volume × reimb</span></div>
-          <div class="field-row"><span style="display:flex;align-items:center;gap:6px;"><span style="width:10px;height:10px;background:#FF8C42;border-radius:50%;display:inline-block;flex-shrink:0;"></span>Z‑score features</span><span style="color:var(--white);">Std devs from mean</span></div>
-          <div class="field-row"><span style="display:flex;align-items:center;gap:6px;"><span style="width:10px;height:10px;background:#E84C4C;border-radius:50%;display:inline-block;flex-shrink:0;"></span>Anomaly flags</span><span style="color:var(--white);">Top 5% triggers</span></div>
-          <div class="field-row"><span style="display:flex;align-items:center;gap:6px;"><span style="width:10px;height:10px;background:#8BA3BF;border-radius:50%;display:inline-block;flex-shrink:0;"></span>Bin features</span><span style="color:var(--white);">Quantile tiers (0–4)</span></div>
+      <div class="card">
+        <div class="card-header"><div class="card-title"><span>◇</span> Risk Classification</div></div>
+        <div class="card-body">
+          <div class="tier-list">
+            <div class="tier-item">
+              <div class="tier-badge-sm" style="background:#FF4D6A22;color:#FF4D6A;border-color:#FF4D6A44;">CRITICAL</div>
+              <div class="tier-desc">Score ≥ 0.85 — Block claim immediately, escalate to fraud team</div>
+            </div>
+            <div class="tier-item">
+              <div class="tier-badge-sm" style="background:#FF6B3522;color:#FF6B35;border-color:#FF6B3544;">HIGH</div>
+              <div class="tier-desc">Score ≥ {{ threshold }} — Flag for detailed manual review before approval</div>
+            </div>
+            <div class="tier-item">
+              <div class="tier-badge-sm" style="background:#FFB83022;color:#FFB830;border-color:#FFB83044;">MEDIUM</div>
+              <div class="tier-desc">Score ≥ {{ "%.2f"|format(threshold * 0.7) }} — Process with additional verification steps</div>
+            </div>
+            <div class="tier-item">
+              <div class="tier-badge-sm" style="background:#00F5A022;color:#00F5A0;border-color:#00F5A044;">LOW</div>
+              <div class="tier-desc">Score &lt; {{ "%.2f"|format(threshold * 0.7) }} — Approve normally, within expected range</div>
+            </div>
+          </div>
         </div>
       </div>
 
-      <div class="panel">
-        <h3>Sample Test Cases</h3>
-        <div style="font-size:13px;color:var(--gray);line-height:1.9;">
-          <p style="color:var(--red);font-weight:700;margin-bottom:4px;">HIGH FRAUD — expected score 0.85+</p>
-          <p>Reimb: $35,000 · Stay: 45 days · Claims: 120</p>
-          <p style="margin-bottom:12px;">Patients: 80 · Chronic: 6.5 · Physicians: 35</p>
-          <p style="color:var(--yellow);font-weight:700;margin-bottom:4px;">BORDERLINE — expected score 0.45–0.65</p>
-          <p>Reimb: $12,000 · Stay: 18 days · Claims: 45</p>
-          <p style="margin-bottom:12px;">Patients: 30 · Chronic: 4.0 · Physicians: 15</p>
-          <p style="color:var(--green);font-weight:700;margin-bottom:4px;">NORMAL — expected score 0.05–0.25</p>
-          <p>Reimb: $4,200 · Stay: 3 days · Claims: 12</p>
-          <p>Patients: 9 · Chronic: 1.8 · Physicians: 5</p>
+      <div class="card">
+        <div class="card-header"><div class="card-title"><span>◉</span> Feature Engineering</div></div>
+        <div class="card-body">
+          <div class="feat-group"><div class="feat-dot" style="background:#00F5A0"></div><div class="feat-name">Baseline aggregates (M1)</div><div class="feat-count">15 features</div></div>
+          <div class="feat-group"><div class="feat-dot" style="background:#00E5FF"></div><div class="feat-name">Ratio features</div><div class="feat-count">8 features</div></div>
+          <div class="feat-group"><div class="feat-dot" style="background:#C87EFF"></div><div class="feat-name">Composite risk scores</div><div class="feat-count">6 features</div></div>
+          <div class="feat-group"><div class="feat-dot" style="background:#FFB830"></div><div class="feat-name">Interaction features</div><div class="feat-count">8 features</div></div>
+          <div class="feat-group"><div class="feat-dot" style="background:#FF6B35"></div><div class="feat-name">Z‑score deviations</div><div class="feat-count">7 features</div></div>
+          <div class="feat-group"><div class="feat-dot" style="background:#FF4D6A"></div><div class="feat-name">Extreme anomaly flags</div><div class="feat-count">9 features</div></div>
+          <div class="feat-group"><div class="feat-dot" style="background:#4A6A8A"></div><div class="feat-name">Quantile bin features</div><div class="feat-count">6 features</div></div>
         </div>
       </div>
 
-      <div class="panel">
-        <h3>Risk Tiers</h3>
-        <div style="font-size:13px;">
-          <div style="display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid var(--blue);">
-            <span style="background:#E84C4C;color:#fff;padding:5px 14px;border-radius:10px;font-size:12px;font-weight:700;min-width:80px;text-align:center;">CRITICAL</span>
-            <span style="color:var(--gray);">Score ≥ 0.85 → Block &amp; investigate immediately</span>
-          </div>
-          <div style="display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid var(--blue);">
-            <span style="background:#FF8C42;color:#fff;padding:5px 14px;border-radius:10px;font-size:12px;font-weight:700;min-width:80px;text-align:center;">HIGH</span>
-            <span style="color:var(--gray);">Score ≥ {{ threshold }} → Flag for manual review</span>
-          </div>
-          <div style="display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid var(--blue);">
-            <span style="background:#F5C842;color:#222;padding:5px 14px;border-radius:10px;font-size:12px;font-weight:700;min-width:80px;text-align:center;">MEDIUM</span>
-            <span style="color:var(--gray);">Score ≥ {{ "%.2f"|format(threshold * 0.7) }} → Extra verification</span>
-          </div>
-          <div style="display:flex;align-items:center;gap:12px;padding:12px 0;">
-            <span style="background:#22C97A;color:#fff;padding:5px 14px;border-radius:10px;font-size:12px;font-weight:700;min-width:80px;text-align:center;">LOW</span>
-            <span style="color:var(--gray);">Score &lt; {{ "%.2f"|format(threshold * 0.7) }} → Approve normally</span>
-          </div>
+      <div class="card">
+        <div class="card-header"><div class="card-title"><span>◌</span> Fraud Signals Reference</div></div>
+        <div class="card-body">
+          <div class="spec-row"><span class="spec-key">High reimbursement</span><span class="spec-val">&gt; $15,000 avg</span></div>
+          <div class="spec-row"><span class="spec-key">Long hospital stay</span><span class="spec-val">&gt; 20 days avg</span></div>
+          <div class="spec-row"><span class="spec-key">High claim volume</span><span class="spec-val">&gt; 60 inpatient claims</span></div>
+          <div class="spec-row"><span class="spec-key">Large patient base</span><span class="spec-val">&gt; 50 unique patients</span></div>
+          <div class="spec-row"><span class="spec-key">Diagnosis stuffing</span><span class="spec-val">&gt; 5 chronic conditions</span></div>
+          <div class="spec-row"><span class="spec-key">Physician rotation</span><span class="spec-val">&gt; 20 unique physicians</span></div>
+          <div class="spec-row"><span class="spec-key">Billing mill pattern</span><span class="spec-val">High volume × high reimb</span></div>
+          <div class="spec-row"><span class="spec-key">Overbilling signal</span><span class="spec-val">Long stay × high claim</span></div>
         </div>
       </div>
 
     </div>
   </div>
 
-</div>
+</div><!-- /container -->
 
 <script>
-let scanCount = 0;
-let historyLog = [];
+// ── Data ─────────────────────────────────────────────────────────
+let sessionCount = 0;
+let log = [];
 
-const SAMPLES = {
-  fraud : { ip_avg_reimbursement:35000, ip_avg_stay_days:45, ip_claim_count:120, total_unique_patients:80,  ip_avg_chronic_cond:6.5, ip_unique_attending_phys:35 },
-  medium: { ip_avg_reimbursement:12000, ip_avg_stay_days:18, ip_claim_count:45,  total_unique_patients:30,  ip_avg_chronic_cond:4.0, ip_unique_attending_phys:15 },
-  normal: { ip_avg_reimbursement:4200,  ip_avg_stay_days:3,  ip_claim_count:12,  total_unique_patients:9,   ip_avg_chronic_cond:1.8, ip_unique_attending_phys:5  },
+const PRESETS = {
+  fraud : { f_reimb:35000, f_stay:45, f_claims:120, f_pats:80,  f_chronic:6.5, f_phys:35 },
+  medium: { f_reimb:12000, f_stay:18, f_claims:45,  f_pats:30,  f_chronic:4.0, f_phys:15 },
+  normal: { f_reimb:4200,  f_stay:3,  f_claims:12,  f_pats:9,   f_chronic:1.8, f_phys:5  },
 };
-const SCAN_SAMPLES = {
-  fraud : { scan_reimb:35000, scan_stay:45, scan_claims:120, scan_chronic:6.5, scan_patients:80,  scan_phys:35 },
-  medium: { scan_reimb:12000, scan_stay:18, scan_claims:45,  scan_chronic:4.0, scan_patients:30,  scan_phys:15 },
-  normal: { scan_reimb:4200,  scan_stay:3,  scan_claims:12,  scan_chronic:1.8, scan_patients:9,   scan_phys:5  },
+const SCAN_PRESETS = {
+  fraud : { s_reimb:35000, s_stay:45, s_claims:120, s_chronic:6.5, s_pats:80,  s_phys:35 },
+  medium: { s_reimb:12000, s_stay:18, s_claims:45,  s_chronic:4.0, s_pats:30,  s_phys:15 },
+  normal: { s_reimb:4200,  s_stay:3,  s_claims:12,  s_chronic:1.8, s_pats:9,   s_phys:5  },
 };
+const C = { CRITICAL:'#FF4D6A', HIGH:'#FF6B35', MEDIUM:'#FFB830', LOW:'#00F5A0' };
 
-function switchTab(name, btn) {
+// ── Tabs ─────────────────────────────────────────────────────────
+function switchTab(id, btn) {
   document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
-  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-  document.getElementById('tab-' + name).classList.add('active');
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('tab-' + id).classList.add('active');
   if (btn) btn.classList.add('active');
 }
 
-function fillSample(type) {
-  Object.entries(SAMPLES[type]).forEach(([k,v]) => {
-    const el = document.getElementById(k); if (el) el.value = v;
-  });
+// ── Fill presets ─────────────────────────────────────────────────
+function fill(t) {
+  Object.entries(PRESETS[t]).forEach(([k,v]) => { const e=document.getElementById(k); if(e) e.value=v; });
 }
-function fillScan(type) {
-  Object.entries(SCAN_SAMPLES[type]).forEach(([k,v]) => {
-    const el = document.getElementById(k); if (el) el.value = v;
-  });
+function fillScan(t) {
+  Object.entries(SCAN_PRESETS[t]).forEach(([k,v]) => { const e=document.getElementById(k); if(e) e.value=v; });
 }
 
-/* ── Manual predict ── */
-async function predict() {
+// ── POST helper ──────────────────────────────────────────────────
+async function api(url, body) {
+  const r = await fetch(url, {
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body: JSON.stringify(body)
+  });
+  const j = await r.json();
+  if (!j.success) throw new Error(j.error || 'Unknown error');
+  return j;
+}
+
+// ── Predict ──────────────────────────────────────────────────────
+async function runPredict() {
   const btn = document.getElementById('predict-btn');
   btn.disabled = true; btn.textContent = 'Analysing…';
   document.getElementById('loading').style.display = 'block';
-  document.getElementById('result-panel').classList.remove('show');
+  document.getElementById('result-card').classList.remove('show');
 
   const data = {
-    ip_avg_reimbursement    : +document.getElementById('ip_avg_reimbursement').value,
-    ip_avg_stay_days        : +document.getElementById('ip_avg_stay_days').value,
-    ip_claim_count          : +document.getElementById('ip_claim_count').value,
-    total_unique_patients   : +document.getElementById('total_unique_patients').value,
-    ip_avg_chronic_cond     : +document.getElementById('ip_avg_chronic_cond').value,
-    ip_unique_attending_phys: +document.getElementById('ip_unique_attending_phys').value,
+    ip_avg_reimbursement    : +document.getElementById('f_reimb').value,
+    ip_avg_stay_days        : +document.getElementById('f_stay').value,
+    ip_claim_count          : +document.getElementById('f_claims').value,
+    total_unique_patients   : +document.getElementById('f_pats').value,
+    ip_avg_chronic_cond     : +document.getElementById('f_chronic').value,
+    ip_unique_attending_phys: +document.getElementById('f_phys').value,
   };
 
   try {
-    const r = await postJSON('/predict', data);
-    renderResult(r);
-    addHistory(r, data, 'Manual');
+    const r = await api('/predict', data);
+    paintResult(r);
+    addLog(r, data, 'Predict');
   } catch(e) { alert('Error: ' + e.message); }
   finally {
-    btn.disabled = false; btn.textContent = 'Analyse for Fraud';
+    btn.disabled = false; btn.textContent = 'Run Fraud Analysis';
     document.getElementById('loading').style.display = 'none';
   }
 }
 
-/* ── Scan manual ── */
-async function scanManual(evt) {
+// ── Scan ─────────────────────────────────────────────────────────
+async function runScan(evt) {
   const btn = evt.target;
   btn.disabled = true; btn.textContent = 'Scanning…';
 
-  const fields = {
-    ip_avg_reimbursement    : +document.getElementById('scan_reimb').value    || 5000,
-    ip_avg_stay_days        : +document.getElementById('scan_stay').value     || 4,
-    ip_claim_count          : +document.getElementById('scan_claims').value   || 15,
-    ip_avg_chronic_cond     : +document.getElementById('scan_chronic').value  || 2,
-    total_unique_patients   : +document.getElementById('scan_patients').value || 12,
-    ip_unique_attending_phys: +document.getElementById('scan_phys').value     || 6,
+  const data = {
+    ip_avg_reimbursement    : +document.getElementById('s_reimb').value    || 5000,
+    ip_avg_stay_days        : +document.getElementById('s_stay').value     || 4,
+    ip_claim_count          : +document.getElementById('s_claims').value   || 15,
+    ip_avg_chronic_cond     : +document.getElementById('s_chronic').value  || 2,
+    total_unique_patients   : +document.getElementById('s_pats').value     || 12,
+    ip_unique_attending_phys: +document.getElementById('s_phys').value     || 6,
   };
 
   try {
-    const r = await postJSON('/predict', fields);
-    renderScanResult(r, fields);
-    addHistory(r, fields, 'Document');
-  } catch(e) { alert('Scan error: ' + e.message); }
+    const r = await api('/predict', data);
+    paintScanResult(r, data);
+    addLog(r, data, 'Scanner');
+  } catch(e) { alert('Error: ' + e.message); }
   finally { btn.disabled = false; btn.textContent = 'Scan & Detect Fraud'; }
 }
 
-/* ── OCR ── */
-async function ocrExtract(input) {
-  const file = input.files[0]; if (!file) return;
-  const status = document.getElementById('ocr-status');
-  status.style.color = 'var(--accent)';
-  status.textContent = 'Running OCR — please wait (30–60 s on first run)…';
+// ── Paint result ──────────────────────────────────────────────────
+function paintResult(r) {
+  const card = document.getElementById('result-card');
+  card.classList.add('show');
+  const c = C[r.risk_tier] || '#00E5FF';
 
-  const fd = new FormData(); fd.append('file', file);
-  try {
-    const resp = await fetch('/scan', { method:'POST', body:fd });
-    const r = await resp.json();
-    if (!r.success) { status.style.color='var(--red)'; status.textContent='OCR error: '+r.error; return; }
-    status.style.color = 'var(--green)';
-    status.textContent = `OCR done — ${r.ocr_regions} regions found. Fields auto-filled.`;
-    const MAP = { ip_avg_reimbursement:'scan_reimb', ip_avg_stay_days:'scan_stay',
-                  ip_claim_count:'scan_claims', ip_avg_chronic_cond:'scan_chronic',
-                  total_unique_patients:'scan_patients', ip_unique_attending_phys:'scan_phys' };
-    Object.entries(r.extracted_fields||{}).forEach(([k,v]) => {
-      const id = MAP[k]; const el = id && document.getElementById(id);
-      if (el && v) el.value = parseFloat(v)||'';
-    });
-  } catch(e) { status.style.color='var(--red)'; status.textContent='OCR failed: '+e.message; }
-}
+  document.getElementById('result-hero').style.setProperty('--result-color', c);
+  document.getElementById('score-num').textContent = r.fraud_score.toFixed(4);
+  document.getElementById('score-num').style.color = c;
+  document.getElementById('score-num').style.textShadow = `0 0 40px ${c}66`;
+  document.getElementById('tier-tag').textContent = r.risk_tier;
+  document.getElementById('tier-tag').style.cssText = `border-color:${c};color:${c};background:rgba(0,0,0,0.3);display:inline-block;margin-top:14px;padding:6px 20px;border-radius:4px;font-family:var(--mono);font-size:13px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;border-width:1px;border-style:solid;`;
+  document.getElementById('score-fill').style.cssText = `width:${r.fraud_score*100}%;background:${c};box-shadow:0 0 8px ${c};height:100%;border-radius:2px;transition:width 0.8s cubic-bezier(0.23,1,0.32,1);`;
 
-/* ── Render helpers ── */
-function renderResult(r) {
-  document.getElementById('result-panel').classList.add('show');
-  const c = r.tier_color;
-  document.getElementById('score-val').textContent = r.fraud_score.toFixed(4);
-  document.getElementById('score-val').style.color = c;
-  document.getElementById('score-bar').style.cssText = `width:${r.fraud_score*100}%;background:${c}`;
-  const b = document.getElementById('tier-badge');
-  b.textContent = r.risk_tier; b.style.cssText = `color:${c};border-color:${c};background:${c}22`;
-  document.getElementById('xgb-s').textContent  = r.xgb_score.toFixed(4);
-  document.getElementById('lgbm-s').textContent = r.lgbm_score.toFixed(4);
-  document.getElementById('rf-s').textContent   = r.rf_score.toFixed(4);
-  document.getElementById('predicted-at').textContent = r.predicted_at;
-  const ab = document.getElementById('action-box');
-  ab.textContent = (r.fraud_predicted?'🚨 ':'✅ ') + r.action;
-  ab.style.cssText = `color:${c};border-color:${c};background:${c}18`;
-  document.getElementById('reasons-container').innerHTML =
+  document.getElementById('v-xgb').textContent  = r.xgb_score.toFixed(4);
+  document.getElementById('v-lgbm').textContent = r.lgbm_score.toFixed(4);
+  document.getElementById('v-rf').textContent   = r.rf_score.toFixed(4);
+  document.getElementById('pred-time').textContent = r.predicted_at;
+
+  const as = document.getElementById('action-strip');
+  as.textContent = (r.fraud_predicted ? '⚠ ' : '✓ ') + r.action;
+  as.style.cssText = `margin:1.2rem;padding:12px 16px;border-radius:6px;border-left:3px solid ${c};background:${c}18;font-size:13px;font-weight:600;color:${c};`;
+
+  document.getElementById('reasons-list').innerHTML =
     (r.reasons||[]).map((rr,i) => `
-      <div class="reason-item">
-        <div class="reason-rank">${i+1}</div>
-        <div>
-          <div class="reason-text">${rr.text}</div>
-          <div class="reason-shap">SHAP: +${rr.shap.toFixed(4)}</div>
+      <div class="reason-row">
+        <div class="reason-num">${i+1}</div>
+        <div class="reason-body">
+          <div class="r-text">${rr.text}</div>
+          <div class="r-shap">SHAP +${rr.shap.toFixed(4)}</div>
         </div>
       </div>`).join('');
 }
 
-function renderScanResult(r, fields) {
-  document.getElementById('scan-result-panel').style.display = 'block';
-  const c = r.tier_color;
+// ── Paint scan result ─────────────────────────────────────────────
+function paintScanResult(r, data) {
+  const card = document.getElementById('scan-result-card');
+  card.style.display = 'block';
+  document.getElementById('scan-time').textContent = r.predicted_at;
+  const c = C[r.risk_tier] || '#00E5FF';
+
   const LABELS = {
     ip_avg_reimbursement:'Claim Amount ($)', ip_avg_stay_days:'Hospital Stay (days)',
-    ip_claim_count:'Claims Filed', ip_avg_chronic_cond:'Diagnoses / Conditions',
+    ip_claim_count:'Claims Filed', ip_avg_chronic_cond:'Diagnoses',
     total_unique_patients:'Unique Patients', ip_unique_attending_phys:'Unique Physicians',
   };
-  document.getElementById('scan-content').innerHTML = `
-    <div style="text-align:center;margin-bottom:1.2rem;padding-bottom:1.2rem;border-bottom:1px solid var(--blue);">
-      <div style="font-size:3.5rem;font-weight:800;color:${c};">${r.fraud_score.toFixed(4)}</div>
-      <div style="font-size:12px;color:var(--gray);margin-bottom:8px;">Fraud Probability Score</div>
-      <span style="background:${c}22;color:${c};padding:6px 20px;border-radius:20px;font-size:14px;font-weight:700;display:inline-block;border:1.5px solid ${c};">${r.risk_tier}</span>
+
+  document.getElementById('scan-body').innerHTML = `
+    <div style="text-align:center;padding:1.5rem 0;border-bottom:1px solid var(--border);margin-bottom:1.2rem;">
+      <div style="font-family:var(--mono);font-size:3.5rem;font-weight:700;color:${c};text-shadow:0 0 30px ${c}66;line-height:1;">${r.fraud_score.toFixed(4)}</div>
+      <div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:0.1em;margin:6px 0 12px;">Fraud Probability</div>
+      <span style="font-family:var(--mono);font-size:12px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;padding:5px 18px;border:1px solid ${c};border-radius:4px;color:${c};">${r.risk_tier}</span>
     </div>
-    <div style="background:${c}18;border:1px solid ${c};border-radius:8px;padding:12px 16px;margin-bottom:1.2rem;font-size:14px;color:${c};font-weight:600;">
-      ${r.fraud_predicted?'🚨':'✅'} ${r.action}
-    </div>
-    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-bottom:1.2rem;">
-      ${['XGBoost','LightGBM','RandomForest'].map((m,i)=>`
-        <div style="background:var(--navy);border-radius:7px;padding:8px;text-align:center;">
-          <div style="font-size:13px;font-weight:700;color:var(--accent);">${[r.xgb_score,r.lgbm_score,r.rf_score][i].toFixed(4)}</div>
-          <div style="font-size:10px;color:var(--gray);">${m}</div>
+    <div style="margin-bottom:1.2rem;padding:12px 14px;border-radius:6px;border-left:3px solid ${c};background:${c}18;font-size:13px;font-weight:600;color:${c};">${r.fraud_predicted?'⚠ ':'✓ '}${r.action}</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:1px;background:var(--border);border-radius:8px;overflow:hidden;margin-bottom:1.2rem;">
+      ${[['XGBoost',r.xgb_score],['LightGBM',r.lgbm_score],['RandomForest',r.rf_score]].map(([m,v])=>`
+        <div style="background:var(--surface2);padding:10px;text-align:center;">
+          <div style="font-family:var(--mono);font-size:13px;font-weight:700;color:var(--cyan);">${v.toFixed(4)}</div>
+          <div style="font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:0.06em;margin-top:3px;">${m}</div>
         </div>`).join('')}
     </div>
-    <div class="reasons-title" style="margin-bottom:8px;">Extracted Claim Fields</div>
-    ${Object.entries(fields).map(([k,v])=>`
-      <div class="field-row">
-        <span style="color:var(--gray);">${LABELS[k]||k}</span>
-        <span style="color:var(--white);font-weight:500;">${k.includes('reimb')?'$'+Number(v).toLocaleString():v}</span>
+    <div style="font-family:var(--mono);font-size:10px;letter-spacing:0.08em;text-transform:uppercase;color:var(--muted);margin-bottom:8px;">Claim Fields</div>
+    ${Object.entries(data).map(([k,v])=>`
+      <div style="display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--border);font-size:12px;">
+        <span style="color:var(--muted);">${LABELS[k]||k}</span>
+        <span style="font-family:var(--mono);color:var(--text);">${k.includes('reimb')?'$'+Number(v).toLocaleString():v}</span>
       </div>`).join('')}
-    <div class="reasons-title" style="margin:1rem 0 8px;">Top Fraud Signals (SHAP)</div>
+    <div style="font-family:var(--mono);font-size:10px;letter-spacing:0.08em;text-transform:uppercase;color:var(--muted);margin:1rem 0 8px;">SHAP Signals</div>
     ${(r.reasons||[]).map((rr,i)=>`
-      <div class="reason-item">
-        <div class="reason-rank">${i+1}</div>
-        <div>
-          <div class="reason-text">${rr.text}</div>
-          <div class="reason-shap">SHAP: +${rr.shap.toFixed(4)}</div>
+      <div class="reason-row">
+        <div class="reason-num">${i+1}</div>
+        <div class="reason-body">
+          <div class="r-text">${rr.text}</div>
+          <div class="r-shap">SHAP +${rr.shap.toFixed(4)}</div>
         </div>
-      </div>`).join('')}
-    <div style="margin-top:1rem;font-size:11px;color:var(--gray);text-align:right;">${r.predicted_at}</div>`;
+      </div>`).join('')}`;
 }
 
-/* ── History ── */
-function addHistory(r, data, source) {
-  scanCount++;
-  document.getElementById('scan-count').textContent = scanCount;
-  historyLog.unshift({
-    n:scanCount, time:r.predicted_at?r.predicted_at.split(' ')[1]:new Date().toLocaleTimeString(),
-    source, score:r.fraud_score, tier:r.risk_tier, color:r.tier_color, pred:r.fraud_predicted,
-    reimb : data.ip_avg_reimbursement || data.scan_reimb || 0,
-    stay  : data.ip_avg_stay_days     || data.scan_stay  || 0,
-    claims: data.ip_claim_count       || data.scan_claims|| 0,
+// ── Add to log ───────────────────────────────────────────────────
+function addLog(r, data, src) {
+  sessionCount++;
+  document.getElementById('scan-count').textContent = sessionCount;
+  document.getElementById('hist-count').textContent = sessionCount + ' record' + (sessionCount>1?'s':'');
+
+  const c = C[r.risk_tier] || '#00E5FF';
+  log.unshift({
+    n: sessionCount,
+    time: r.predicted_at ? r.predicted_at.split(' ')[1] : new Date().toLocaleTimeString(),
+    src, score: r.fraud_score, tier: r.risk_tier, color: c, pred: r.fraud_predicted,
+    reimb : data.ip_avg_reimbursement || 0,
+    stay  : data.ip_avg_stay_days     || 0,
+    claims: data.ip_claim_count       || 0,
   });
-  document.getElementById('history-body').innerHTML = historyLog.map(h=>`
-    <tr>
-      <td style="color:var(--gray);">${h.n}</td>
-      <td>${h.time}</td>
-      <td><span style="font-size:11px;color:var(--gray);">${h.source}</span></td>
-      <td style="color:${h.color};font-weight:700;">${h.score.toFixed(4)}</td>
-      <td><span class="tier-pill" style="background:${h.color}22;color:${h.color};">${h.tier}</span></td>
-      <td>${h.pred?'<span style="color:var(--red);font-weight:600;">🚨 FRAUD</span>':'<span style="color:var(--green);">✅ LEGIT</span>'}</td>
-      <td>$${Number(h.reimb).toLocaleString()}</td>
-      <td>${h.stay} days</td>
-      <td>${h.claims}</td>
-    </tr>`).join('');
-}
 
-/* ── Fetch helper ── */
-async function postJSON(url, data) {
-  const resp = await fetch(url, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(data) });
-  const r = await resp.json();
-  if (!r.success) throw new Error(r.error);
-  return r;
+  document.getElementById('hist-body').innerHTML = log.map(h => `
+    <tr>
+      <td style="font-family:var(--mono);font-size:11px;color:var(--muted);">${h.n}</td>
+      <td style="font-family:var(--mono);font-size:11px;">${h.time}</td>
+      <td style="font-size:11px;color:var(--muted);">${h.src}</td>
+      <td style="font-family:var(--mono);font-weight:700;color:${h.color};">${h.score.toFixed(4)}</td>
+      <td><span class="tier-chip" style="border-color:${h.color}44;color:${h.color};background:${h.color}11;">${h.tier}</span></td>
+      <td>${h.pred
+        ? '<span style="font-family:var(--mono);font-size:11px;color:#FF4D6A;">⚠ FRAUD</span>'
+        : '<span style="font-family:var(--mono);font-size:11px;color:#00F5A0;">✓ LEGIT</span>'}</td>
+      <td style="font-family:var(--mono);font-size:11px;">$${Number(h.reimb).toLocaleString()}</td>
+      <td style="font-family:var(--mono);font-size:11px;">${h.stay}d</td>
+      <td style="font-family:var(--mono);font-size:11px;">${h.claims}</td>
+    </tr>`).join('');
 }
 </script>
 </body>
